@@ -1,108 +1,91 @@
-<?php
-session_start();
-
-include('init.php');
-
-if (isset($_POST['username']) && $_POST['username'] != '') {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-
-    if (login($username, $password)) {
-        $_SESSION['username'] = $username;
-        $_SESSION['ID'] = $row['ID'];
-        $_SESSION['name'] = $row['name'];
-
-         redirect('dashboard.php');
-         
-    } else {
-        echo "username or password invalid";
-    }
-}
-?>
-
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>kakaveri</title>
-        <!-- Tell the browser to be responsive to screen width -->
-        <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
-        <!-- Bootstrap 3.3.6 -->
-        <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
-        <!-- Font Awesome -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
-        <!-- Ionicons -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
-        <!-- Theme style -->
-        <link rel="stylesheet" href="dist/css/AdminLTE.min.css">
-        <!-- iCheck -->
-        <link rel="stylesheet" href="plugins/iCheck/square/blue.css">
-        <link rel="stylesheet" href="bootstrap/css/custom.css">
-        <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-        <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-        <!--[if lt IE 9]>
-        <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
-        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-        <![endif]-->
-    </head>
-    <body class="hold-transition login-page">
-        <div class="login-box">
-            <div class="login-logo">
-                <a href="dashboard.php">KAKAVERI VILAYANKULAM</a>
-            </div>
-            <!-- /.login-logo -->
-            <div class="login-box-body">
-                <p class="login-box-msg"> <h3> Sign in </h3> </p>
-
-                <form method="post">
-                    <div class="form-group has-feedback">
-                        <input type="text" class="form-control" name="username" placeholder="Username">
-                        <span id="log" class="glyphicon glyphicon-envelope form-control-feedback"></span>
-                    </div>
-                    <div class="form-group has-feedback">
-                        <input type="password" class="form-control"  name="password" placeholder="Password">
-                        <span id="log" class="glyphicon glyphicon-lock form-control-feedback"></span>
-                    </div>
-                    <div class="row">
-                        <div class="col-xs-8">
-                            <div class="checkbox icheck">
-                                <label>
-                                    <input type="checkbox"> Remember Me
-                                </label>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kovil App - Version Selector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .version-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .version-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        .version-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .btn-version {
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h1 class="text-white mb-5">
+                    <i class="bi bi-house-fill"></i> Kovil App
+                </h1>
+                <h3 class="text-white mb-5">Choose Your Version</h3>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="version-card p-5">
+                            <div class="version-icon text-primary">
+                                <i class="bi bi-gear-fill"></i>
                             </div>
+                            <h4 class="mb-3">Current Version</h4>
+                            <p class="text-muted mb-4">
+                                Bootstrap 3 - Stable and tested version with all existing features.
+                            </p>
+                            <a href="current/dashboard.php" class="btn btn-primary btn-version">
+                                <i class="bi bi-arrow-right"></i> Launch Current
+                            </a>
                         </div>
-                        <!-- /.col -->
-                        <div class="col-xs-4">
-                            <button type="submit" class="btn btn-primary btn-block btn-flat" >Sign In</button>
-                        </div>
-                        <!-- /.col -->
                     </div>
-                </form>
-
-                <!-- /.social-auth-links -->
-
-                <a href="forgotpwd.php">Forgot password</a>  |
-                <a href="register.php" class="text-center"> Register</a>
-
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="version-card p-5">
+                            <div class="version-icon text-success">
+                                <i class="bi bi-stars"></i>
+                            </div>
+                            <h4 class="mb-3">Modern Version</h4>
+                            <p class="text-muted mb-4">
+                                Bootstrap 5 - New modern interface with enhanced features and design.
+                            </p>
+                            <a href="modern/dashboard.php" class="btn btn-success btn-version">
+                                <i class="bi bi-arrow-right"></i> Launch Modern
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-5">
+                    <p class="text-white-50">
+                        <i class="bi bi-info-circle"></i>
+                        Both versions share the same database and functionality.
+                    </p>
+                </div>
             </div>
-            <!-- /.login-box-body -->
         </div>
-        <!-- /.login-box -->
-
-        <!-- jQuery 2.2.3 -->
-        <script src="plugins/jQuery/jquery-2.2.3.min.js"></script>
-        <!-- Bootstrap 3.3.6 -->
-        <script src="bootstrap/js/bootstrap.min.js"></script>
-        <!-- iCheck -->
-        <script src="plugins/iCheck/icheck.min.js"></script>
-        <script>
-            $(function () {
-                $('input').iCheck({
-                    checkboxClass: 'icheckbox_square-blue',
-                    radioClass: 'iradio_square-blue',
-                    increaseArea: '20%' // optional
-                });
-            });
-        </script>
-    </body>
-</html>
+    </div>
+</body>
+</html> 
