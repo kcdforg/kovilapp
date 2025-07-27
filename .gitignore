@@ -1,13 +1,3 @@
-# Large files and directories
-images/
-current/images/
-attachments/
-plugins/
-bootstrap/
-modern/
-current/dist/
-current/plugins/
-
 # IDE and system files
 .DS_Store
 *.log
@@ -27,27 +17,21 @@ current/plugins/
 *.bak
 *.backup
 
-# Large binary files
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.bmp
-*.tiff
-*.ico
-*.svg
+# Exclude large image files in current/images/member/ folder
+current/images/member/**/*.jpg
+current/images/member/**/*.jpeg
+current/images/member/**/*.png
+current/images/member/**/*.gif
+current/images/member/**/*.bmp
+current/images/member/**/*.tiff
+current/images/member/**/*.ico
+current/images/member/**/*.svg
 
-# Exclude specific large directories
-dist/
-nbproject/
-current/nbproject/
+# Exclude files in attachments folder
+attachments/**/*
+current/attachments/**/*
+modern/attachments/**/*
 
-# Exclude all image files
-**/*.jpg
-**/*.jpeg
-**/*.png
-**/*.gif
-**/*.bmp
-**/*.tiff
-**/*.ico
-**/*.svg 
+# Keep all other folders and files
+!*/
+!.gitignore 
