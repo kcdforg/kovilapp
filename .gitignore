@@ -1,9 +1,12 @@
 # Large files and directories
-images/member/
+images/
+current/images/
 attachments/
 plugins/
 bootstrap/
 modern/
+current/dist/
+current/plugins/
 
 # IDE and system files
 .DS_Store
@@ -22,4 +25,29 @@ modern/
 
 # Backup files
 *.bak
-*.backup 
+*.backup
+
+# Large binary files
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.svg
+
+# Exclude specific large directories
+dist/
+nbproject/
+current/nbproject/
+
+# Exclude all image files
+**/*.jpg
+**/*.jpeg
+**/*.png
+**/*.gif
+**/*.bmp
+**/*.tiff
+**/*.ico
+**/*.svg 
