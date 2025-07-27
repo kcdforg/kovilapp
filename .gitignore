@@ -1,0 +1,25 @@
+# Large files and directories
+images/member/
+attachments/
+plugins/
+bootstrap/
+modern/
+
+# IDE and system files
+.DS_Store
+*.log
+*.tmp
+*.cache
+
+# PHP specific
+*.swp
+*.swo
+*~
+
+# Database files
+*.sql
+*.db
+
+# Backup files
+*.bak
+*.backup 

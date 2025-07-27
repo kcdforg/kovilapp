@@ -1,19 +1,30 @@
-
-<footer class="bg-light text-center text-lg-start mt-auto border-top">
-  <div class="container py-3">
-    <div class="row align-items-center">
-      <div class="col-md-6 text-md-start text-center mb-2 mb-md-0">
-        <span class="text-muted">&copy; <?= date("Y") ?> National Association. All rights reserved.</span>
-      </div>
-      <div class="col-md-6 text-md-end text-center">
-        <a href="#" class="text-muted me-3 text-decoration-none">Privacy Policy</a>
-        <a href="#" class="text-muted text-decoration-none">Terms of Service</a>
-      </div>
-    </div>
   </div>
-</footer>
+  <!-- /.content-wrapper -->
+  <footer class="main-footer">
+    <div class="container">
+           <strong>Copyright &copy; 2014-2016 <a href="https://form.kakaverivilayankulam.com">sri kakkaveri annamar</a>.</strong> All rights
+      reserved.
+    </div>
+    <!-- /.container -->
+  </footer>
 
-<!-- Bootstrap JS Bundle -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- ./wrapper -->
+
+<!-- jQuery 2.2.3 -->
+<!-- Bootstrap 3.3.6 -->
+<script src="<?php echo $path ?>/bootstrap/js/bootstrap.min.js"></script>
+<!-- SlimScroll -->
+<script src="<?php echo $path ?>/plugins/slimScroll/jquery.slimscroll.min.js"></script>
+<!-- FastClick 
+<script src="<?php echo $path ?>/plugins/fastclick/fastclick.js"></script>
+-->
+<!-- AdminLTE App 
+<script src="<?php echo $path ?>/dist/js/app.min.js"></script>
+-->
+<!-- AdminLTE for demo purposes 
+<script src="<?php echo $path ?>/dist/js/demo.js"></script>
+-->
+ 
+
 </body>
 </html>
