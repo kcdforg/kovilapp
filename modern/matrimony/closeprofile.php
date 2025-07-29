@@ -1,4 +1,6 @@
 <?php
+include('../init.php');
+check_login();
 include('../popupheader.php');
 $id = $_GET['id'];
 if (count($_POST) > 0) {

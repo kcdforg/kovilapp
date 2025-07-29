@@ -229,23 +229,15 @@
                             <i class="bi bi-person-badge"></i> Users
                         </a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?php echo $path; ?>/matrimony/listhoroscope.php">
                             <i class="bi bi-heart-fill"></i> Matrimony
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="<?php echo $path; ?>/matrimony/horoscopelist.php">Horoscopes</a></li>
-                            <li><a class="dropdown-item" href="<?php echo $path; ?>/matrimony/addhoroscope.php">Add Horoscope</a></li>
-                        </ul>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-gift-fill"></i> Donations
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?php echo $path; ?>/subscription/list.php">
+                            <i class="bi bi-gift"></i> Donations
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="<?php echo $path; ?>/donation/donationlist.php">View Donations</a></li>
-                            <li><a class="dropdown-item" href="<?php echo $path; ?>/donation/adddonation.php">Add Donation</a></li>
-                        </ul>
                     </li>
                 </ul>
                 

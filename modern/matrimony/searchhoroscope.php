@@ -1,5 +1,7 @@
 <?php
-include('../header.php');
+include('../init.php');
+check_login();
+include('../includes/header.php');
 
 $height_from = '';
 $height_to = '';
@@ -44,18 +46,10 @@ if (count($_POST) > 1) {
     if (isset($_POST['star'])) {
         $where .= '  AND star in ( ';
         foreach ($_POST['star'] as $k => $v) {
-            //$where .= "  raasi = $k OR  ";
             $where .= "$k,";
             $star[$k]= $k;
         }
-        //$where .= " raasi = $k  ) ";   
         $where .= " $k ) ";   
-  
-      /*  $star = $_POST['star'];
-        $star_list = implode(",",$star);
-        $where .= '  AND star in ('. $star_list . ")";
-        */
-    
     }
 	
     if (isset($_POST['raghu_kedhu']) ) {
@@ -65,285 +59,306 @@ if (count($_POST) > 1) {
         $where .= ' AND sevvai > 0 ';
     }
 }
-/* if (isset($_POST['colour'])) {
-  $where .= 'colour = "$colour"';
-  } */
 ?>
+
 <div class="container-fluid">
-    <h2 class="container text-center">Search Horoscope</h2>
-</div>
-<div class="col-sm-12 ">
-    <div class="col-sm-3 " style="padding-left:0px;">
-        <div id="filter" class="box box-primary">
-            <div id="clr" class="box-header with-border">
-                <h3 class="box-title"><b>Filter</b></h3>
-            </div>
-            <!-- /.box-header -->
-            <div class="box-body">
-                <form action="searchhoroscope.php" method="POST">			 
-                    <ul class="list-group list-group-unbordered">
-                        <li id="item" class="list-group item">      
-                            <button type="submit" id="sub" class="btn btn-info pull-right">Submit</button>	
-                            <br>
-                        </li>
-                        <li id="item" class="list-group item">     
-
-                            <table>
-                                <tr>
-                                    <td style="width:100px"><label class="control-label span3">Height:</label></td>
-                                    <td ><?php display_height_horo("height_from",$height_from)   ?>
-                                       <!-- <input type="text" class="form-control" id="inputusername3" name="height_from" placeholder="from">       -->
-                                    </td>
-                                    <td style="width:30px;text-align: center;">  to  </td>
-                                    <td >
-                                        <?php display_height_horo("height_to",$height_to) ?>
-                                        <!-- <input type="text" class="form-control" id="inputusername3" name="height_to" placeholder="to">       -->
-                                    </td>
-                                    <td> cms </td>
-                                </tr>
-                            </table>	
-                        </li>
-                        <!-- /.item -->
-                        <li id="item" class="list-group item">
-
-                            <table>
-                                <tr>
-
-                                    <td style="width:100px">
-                                        <label class="control-label span3">Age: </label>
-                                    </td>
-                                    <td>
-                                        <input type="text" class="form-control" id="inputusername3" name="age_from" value="<?php echo $age_from?>" placeholder="from">
-                                    </td>
-                                    <td style="width:30px;text-align: center">  to  </td>
-                                    <td>
-                                        <input type="text" class="form-control" id="inputusername3" name="age_to"  value="<?php echo $age_to?>"  placeholder="to">
-                                    </td>
-                                    <td>&nbsp;Yrs</td></tr> </table>  
-                        </li>
-
-
-                        <li id="item" class="list-group item"> 
-
-                            <label class="control-label span3">Star: </label>
-                            <div style="height:300px;overflow: scroll">
-                                <?php display_star_checkbox('star', $star, 'width:170px;') ?>
-                            </div>    
-
-                        </li>
-                        <style>
-                            input[type=checkbox] {
-
-                                -ms-transform: scale(1.2); /* IE */
-                                -moz-transform: scale(1.2); /* FF */
-                                -webkit-transform: scale(1.2); /* Safari and Chrome */
-                                -o-transform: scale(1.2); /* Opera */
-
-                            }
-                        </style>
-                        <li id="item" class="list-group item"> 
-                            <table>
-                                <tr>
-                                    <td style="width:100px"> <label class="control-label span3">Ragu/Kedhu: </label>	</td>
-                                    <td>
-                                        <?php 
-                                        if(isset($_POST['raghu_kedhu'])) $checked = " checked ";
-                                        else $checked = '';
-                                    ?>
-                                        <input type="checkbox" name="raghu_kedhu" style="margin-left:20px;" <?php echo $checked ?> >
-                                    </td>
-                                </tr>
-                            </table>     
-                        </li>
-                        <li id="item" class="list-group item"> 
-                            <table>
-                                <tr>
-                                    <td style="width:100px"> <label class="control-label span3">Sevvai: </label></td>
-                                    <td>			
-                                        <?php 
-                                        if(isset($_POST['sevvai'])) $checked = " checked ";
-                                        else $checked = '';
-                                    ?>
-                                        <input type="checkbox" name="sevvai" style="margin-left:20px;" <?php echo $checked ?> >
-                                    </td>
-                                </tr>
-                            </table> 
-                        </li>
-                        <!-- /.item -->
-
-                        <li id="item" class="list-group item"> 
-                            <label class="control-label span3">
-                                Marital status: </label>	
-                            <?php 
-                            if(!isset($_POST['marital_status']))
-                                    $_POST['marital_status']['unmarried'] = 'on';
-                            ?>
-                            <?php display_marital_checkbox('marital_status',$_POST['marital_status'] ) ?>
-
-                        </li>
-
-                        <li id="item" class="list-group item"> 
-                            <table>
-                                <tr><td style="width:100px"><label class="control-label span3">Kulam: </label></td>
-                                    <td><?php display_kulam_list($name = "kulam") ?></td>
-                                </tr>
-                            </table>
-                        </li>
-
-                        <!-- /.item -->
-                    </ul>
-                    <button type="submit" id="sub" class="btn btn-info pull-right">submit</button>	
-                </form>
-            </div>
-        </div>
-    </div>
-
-<?php 
-                $result = get_horo_list($where);
-$num_rows = mysqli_num_rows($result);
-?>
-    <div class="col-sm-9" style="padding-left:0px;">
-        <div id="searchresult" class="box box-primary">
-            <div id="clr" class="box-header with-border">
-                <h3 class="box-title"><b>Search Results ( <?php echo $num_rows ?>)</b></h3>
-            </div>
-            <div class="box-body">
-                <?php
-                while ($row = mysqli_fetch_array($result)) {
-                    ?>		  
-                    <div id="border" class="col-sm-12 box box-primary">	
-                        <div id="clr" class="box-header ">
-                            <b><?php echo $row['name'] ?></b>
+    <div class="row">
+        <div class="col-12">
+            <h2 class="text-center mb-4">Search Horoscope</h2>
+            
+            <div class="row">
+                <!-- Search Filters Sidebar -->
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-funnel"></i> Filter
+                            </h5>
                         </div>
-                        <div class="box-body hororesult">
-                            <div id="img" class="col-sm-3">
-
-                                <a><img src="../attachments/<?php echo $row['photo'] ?>" class="img-thumbnail img-responsive" style="width: 140px; height: 150px;" alt="img"> </a>
-                            </div>
-                            <div  class="col-sm-9">
-
-                                <div class="col-md-6">
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> Age</b> </b><span class="pull-right">:</span>
+                        <div class="card-body">
+                            <form action="searchhoroscope.php" method="POST">
+                                <ul class="list-group list-group-flush">
+                                    <!-- Submit Button -->
+                                    <li class="list-group-item border-0">
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            <i class="bi bi-search"></i> Submit
+                                        </button>
+                                    </li>
+                                    
+                                    <!-- Height Filter -->
+                                    <li class="list-group-item border-0">
+                                        <div class="d-flex align-items-center gap-2 filter-row">
+                                            <label class="form-label mb-0 me-2" style="min-width:60px;">Height:</label>
+                                            <?php display_height_horo("height_from", $height_from) ?>
+                                            <span class="mx-2">to</span>
+                                            <?php display_height_horo("height_to", $height_to) ?>
+                                            <span class="ms-2 unit-label">cms</span>
                                         </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo $row['age'] ?></span>
+                                    </li>
+                                    
+                                    <li class="list-group-item border-0">
+                                        <hr class="my-2">
+                                    </li>
+                                    
+                                    <!-- Age Filter -->
+                                    <li class="list-group-item border-0">
+                                        <div class="d-flex align-items-center gap-2 filter-row">
+                                            <label class="form-label mb-0 me-2" style="min-width:60px;">Age:</label>
+                                            <input type="text" class="form-control form-control-sm" name="age_from" value="<?php echo $age_from?>" placeholder="from" style="max-width:70px;">
+                                            <span class="mx-2">to</span>
+                                            <input type="text" class="form-control form-control-sm" name="age_to" value="<?php echo $age_to?>" placeholder="to" style="max-width:70px;">
+                                            <span class="ms-2 unit-label">Yrs</span>
                                         </div>
-                                    </div>
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> Marital Status</b> <span class="pull-right">:</span>
+                                    </li>
+                                    
+                                    <li class="list-group-item border-0">
+                                        <hr class="my-2">
+                                    </li>
+                                    
+                                    <!-- Star Filter -->
+                                    <li class="list-group-item border-0">
+                                        <label class="form-label">Star:</label>
+                                        <div style="height:300px; overflow-y: scroll; border: 1px solid #dee2e6; border-radius: 5px; padding: 10px;">
+                                            <?php display_star_checkbox('star', $star, 'width:170px;') ?>
                                         </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo get_marital_status($row['marital_status']) ?></span>
+                                    </li>
+                                    
+                                    <li class="list-group-item border-0">
+                                        <hr class="my-2">
+                                    </li>
+                                    
+                                    <!-- Raghu/Kedhu Filter -->
+                                    <li class="list-group-item border-0">
+                                        <div class="row align-items-center">
+                                            <div class="col-8">
+                                                <label class="form-label mb-0">Raghu/Kedhu:</label>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="form-check">
+                                                    <?php 
+                                                    if(isset($_POST['raghu_kedhu'])) $checked = " checked ";
+                                                    else $checked = '';
+                                                    ?>
+                                                    <input class="form-check-input" type="checkbox" name="raghu_kedhu" <?php echo $checked ?>>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-
-
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b>  Education </b><span class="pull-right">:</span>
+                                    </li>
+                                    
+                                    <li class="list-group-item border-0">
+                                        <hr class="my-2">
+                                    </li>
+                                    
+                                    <!-- Sevvai Filter -->
+                                    <li class="list-group-item border-0">
+                                        <div class="row align-items-center">
+                                            <div class="col-8">
+                                                <label class="form-label mb-0">Sevvai:</label>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="form-check">
+                                                    <?php 
+                                                    if(isset($_POST['sevvai'])) $checked = " checked ";
+                                                    else $checked = '';
+                                                    ?>
+                                                    <input class="form-check-input" type="checkbox" name="sevvai" <?php echo $checked ?>>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo $row['qualification'] ?></span>
+                                    </li>
+                                    
+                                    <li class="list-group-item border-0">
+                                        <hr class="my-2">
+                                    </li>
+                                    
+                                    <!-- Marital Status Filter -->
+                                    <li class="list-group-item border-0">
+                                        <label class="form-label">Marital Status:</label>
+                                        <?php 
+                                        if(!isset($_POST['marital_status']))
+                                            $_POST['marital_status']['No'] = 'on';
+                                        ?>
+                                        <?php display_marital_checkbox('marital_status', $_POST['marital_status']) ?>
+                                    </li>
+                                    
+                                    <li class="list-group-item border-0">
+                                        <hr class="my-2">
+                                    </li>
+                                    
+                                    <!-- Kulam Filter -->
+                                    <li class="list-group-item border-0">
+                                        <div class="row align-items-center">
+                                            <div class="col-3">
+                                                <label class="form-label mb-0">Kulam:</label>
+                                            </div>
+                                            <div class="col-9">
+                                                <?php display_kulam_list("kulam") ?>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> Occupation </b><span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo $row['occupation'] ?></span>
-                                        </div>
-                                    </div>
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> Ragu / Kedhu </b><span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo $row['raaghu_kaedhu'] ?></span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> Raasi </b><span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo get_raasi($row['raasi']) ?></span>
-                                        </div>
-                                    </div>
-
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> laknam </b><span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo get_lagnam($row['laknam']) ?></span>
-                                        </div>
-                                    </div>
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> Star </b><span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo get_star($row['star']) ?></span>
-                                        </div>
-                                    </div>
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> Padham</b> <span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo $row['padham'] ?></span>
-                                        </div>
-                                    </div>
-
-                                    <div   class="row">
-                                        <div class="col-sm-5 left-text">
-                                            <b> Sevvai </b><span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-7 left-text ">
-                                            <span id="cont"><?php echo $row['sevvai'] ?></span>
-                                        </div>
-                                    </div>
-
-                                </div>
-                                <div class="col-md-12">
-                                    <div   class="row">
-                                        <div class="col-sm-3 left-text">
-                                            <b> Kulam </b><span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-9 left-text ">
-                                            <span id="cont"><?php echo get_kulam($row['kulam']) ?></span>
-                                        </div>
-                                    </div>
-
-                                    <div   class="row">
-                                        <div class="col-sm-3 left-text">
-                                            <b> Kovil </b><span class="pull-right">:</span>
-                                        </div>
-                                        <div class="col-sm-9 left-text ">
-                                            <span id="cont"><?php echo $row['temple'] ?></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <a href="viewhoroscope.php?id=<?php echo $row['id'] ?>" <button type="submit" id="full" class="btn btn-info pull-right">View full profile</button></a>			  
+                                    </li>
+                                </ul>
+                                
+                                <button type="submit" class="btn btn-primary w-100 mt-3">
+                                    <i class="bi bi-search"></i> Submit
+                                </button>
+                            </form>
                         </div>
                     </div>
-                    <?php
-                }
-                ?> 
+                </div>
+
+                <!-- Search Results -->
+                <div class="col-md-9">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-list-ul"></i> Search Results
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <?php
+                            if (count($_POST) > 1) {
+                                $sql = "SELECT * FROM $tbl_matrimony WHERE `deleted`=0 $where ORDER BY id DESC";
+                                $result = mysqli_query($con, $sql);
+                                $count = mysqli_num_rows($result);
+                                
+                                if ($count > 0) {
+                                    echo '<div class="alert alert-info">Found ' . $count . ' matching profiles</div>';
+                                    ?>
+                                    <div class="row">
+                                        <?php
+                                        while ($row = mysqli_fetch_array($result)) {
+                                            ?>
+                                            <div class="col-md-6 mb-4">
+                                                <div class="card h-100">
+                                                    <div class="card-header">
+                                                        <h6 class="card-title mb-0">
+                                                            <strong><?php echo $row['name']; ?></strong>
+                                                        </h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="row">
+                                                            <div class="col-md-4 text-center">
+                                                                <img src="../images/horo/<?php echo $row['photo'] ?: 'default.jpg' ?>" 
+                                                                     class="img-thumbnail" 
+                                                                     style="width: 120px; height: 140px; object-fit: cover;"
+                                                                     alt="Profile Photo">
+                                                            </div>
+                                                            <div class="col-md-8">
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Age:</strong></div>
+                                                                    <div class="col-7"><?php echo $row['age']; ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Marital Status:</strong></div>
+                                                                    <div class="col-7"><?php echo get_marital_status($row['marital_status']); ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Education:</strong></div>
+                                                                    <div class="col-7"><?php echo $row['qualification']; ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Occupation:</strong></div>
+                                                                    <div class="col-7"><?php echo $row['occupation']; ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Raasi:</strong></div>
+                                                                    <div class="col-7"><?php echo get_raasi($row['raasi']); ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Star:</strong></div>
+                                                                    <div class="col-7"><?php echo get_star($row['star']); ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Raghu/Kedhu:</strong></div>
+                                                                    <div class="col-7"><?php echo ($row['raaghu_kaedhu'] > 0) ? "Yes" : "No"; ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Sevvai:</strong></div>
+                                                                    <div class="col-7"><?php echo ($row['sevvai'] > 0) ? "Yes" : "No"; ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Kulam:</strong></div>
+                                                                    <div class="col-7"><?php echo get_kulam($row['kulam']); ?></div>
+                                                                </div>
+                                                                <div class="row mb-2">
+                                                                    <div class="col-5"><strong>Temple:</strong></div>
+                                                                    <div class="col-7"><?php echo $row['temple']; ?></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-3">
+                                                            <div class="row mb-2">
+                                                                <div class="col-12">
+                                                                    <strong>Contact:</strong><br>
+                                                                    <small><?php echo $row['mobile_no']; ?><br><?php echo $row['email']; ?><br><?php echo $row['address']; ?></small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="card-footer">
+                                                        <div class="btn-group w-100" role="group">
+                                                            <a href="viewhoroscope.php?id=<?php echo $row['id']; ?>" 
+                                                               class="btn btn-sm btn-outline-primary">
+                                                                <i class="bi bi-eye"></i> View
+                                                            </a>
+                                                            <a href="updatehoroscope.php?id=<?php echo $row['id']; ?>" 
+                                                               class="btn btn-sm btn-outline-warning">
+                                                                <i class="bi bi-pencil"></i> Edit
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <?php
+                                        }
+                                        ?>
+                                    </div>
+                                    <?php
+                                } else {
+                                    echo '<div class="alert alert-warning">No matching profiles found for your search criteria.</div>';
+                                }
+                            } else {
+                                echo '<div class="alert alert-info">Use the filters on the left to search for horoscope profiles.</div>';
+                            }
+                            ?>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-<div style="clear:both"></div>
-<?php
-include('../footer.php');
-?>			  
+
+<style>
+    .form-check-input {
+        transform: scale(1.2);
+    }
+    
+    .list-group-item {
+        padding: 0.75rem 0;
+    }
+    
+    .list-group-item hr {
+        margin: 0.5rem 0;
+    }
+
+.filter-row label {
+  white-space: nowrap;
+}
+.unit-label {
+  white-space: nowrap;
+  min-width: 28px;
+  text-align: left;
+}
+.filter-row input,
+.filter-row select {
+  min-width: 70px;
+  max-width: 90px;
+}
+/* Increase max-width for height select boxes */
+.filter-row select[name^='height_'] {
+  max-width: 130px;
+}
+</style>
+
+<?php include('../includes/footer.php'); ?>			  

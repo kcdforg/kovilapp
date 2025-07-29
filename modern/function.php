@@ -1,9 +1,12 @@
 <?php
 //require_once(dirname(__FILE__) . "/config.php");
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 function check_login() {
     global $path;
-    session_start();
     //Check whether the session variable username is present or not
     if (!isset($_SESSION['username']) || (($_SESSION['username']) == '')) {
         redirect('index.php');

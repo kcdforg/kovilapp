@@ -75,6 +75,34 @@
     background-color: rgba(13, 110, 253, 0.05);
 }
 
+/* Force plain background for all table headers, override any gradient or variable */
+.table thead th, .dataTable thead th, table.dataTable thead th, .table thead, .dataTable thead, table.dataTable thead {
+  background: #f8f9fa !important;
+  background-image: none !important;
+  background-color: #f8f9fa !important;
+  color: #212529 !important;
+  --bs-table-bg: #f8f9fa !important;
+}
+
+/* Bulletproof removal of gradient from all table headers */
+.table thead th,
+.dataTable thead th,
+table.dataTable thead th,
+.table thead,
+.dataTable thead,
+table.dataTable thead,
+.dataTables_wrapper .dataTables_scrollHeadInner,
+.dataTables_wrapper .dataTables_scrollHead,
+.dataTables_wrapper .dataTables_scroll .dataTables_scrollHead th,
+.table-striped > thead > tr > th,
+.table-hover > thead > tr > th {
+  background: none !important;
+  background-color: #f8f9fa !important;
+  background-image: none !important;
+  color: #212529 !important;
+  --bs-table-bg: #f8f9fa !important;
+}
+
 /* Custom Navigation Styles */
 .navbar-brand {
     font-weight: 700;
@@ -161,6 +189,7 @@
 .pagination .page-item.active .page-link {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
+    color: #fff !important;
 }
 
 /* Custom Progress Bar Styles */
@@ -305,4 +334,60 @@
 .was-validated .form-control:invalid {
     border-color: var(--danger-color);
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 1.4 1.4M7.2 4.6l-1.4 1.4'/%3e%3c/svg%3e");
+} 
+
+:root,
+.table,
+.dataTables_wrapper table,
+.dataTables_wrapper .table {
+  --bs-table-bg: #f8f9fa !important;
+}
+
+.table thead th,
+.dataTable thead th,
+table.dataTable thead th,
+.table thead,
+.dataTable thead,
+table.dataTable thead,
+.dataTables_wrapper .dataTables_scrollHeadInner,
+.dataTables_wrapper .dataTables_scrollHead,
+.dataTables_wrapper .dataTables_scroll .dataTables_scrollHead th,
+.table-striped > thead > tr > th,
+.table-hover > thead > tr > th,
+.table thead th::before,
+.table thead th::after,
+.dataTable thead th::before,
+.dataTable thead th::after {
+  background: none !important;
+  background-color: #f8f9fa !important;
+  background-image: none !important;
+  color: #212529 !important;
+  box-shadow: none !important;
+} 
+
+/* --- Active pagination color override (ensure this is last) --- */
+.pagination .page-item.active .page-link,
+.pagination .page-item.active > .page-link,
+ul.pagination li.active a.page-link,
+ul.pagination li.active > a.page-link {
+  color: #fff !important;
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+} 
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+    border: none;
+    color: #fff !important;
+} 
+
+/* FINAL override for active pagination color and background */
+.pagination .page-item.active .page-link,
+.pagination .page-item.active > .page-link,
+ul.pagination li.active a.page-link,
+ul.pagination li.active > a.page-link {
+  background: linear-gradient(135deg, #4e73df 0%, #224abe 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: none !important;
 } 

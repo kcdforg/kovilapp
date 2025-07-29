@@ -1,4 +1,6 @@
 <?php
+include('../init.php');
+check_login();
 include('../popupheader.php');
 include_once(dirname(__FILE__) . "/../function.php");
 

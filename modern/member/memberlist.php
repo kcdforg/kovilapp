@@ -4,10 +4,51 @@ include('../init.php');
 // Check if user is logged in
 check_login();
 
-// Get all members for DataTables (pagination handled by DataTables)
-$where = '';
-$families = get_families("ORDER BY id DESC");
-$total_records = count($families);
+// Pagination setup
+$per_page = 25;
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $per_page;
+
+// Filtering (search, village, kattalai)
+$where = [];
+$params = [];
+if (!empty($_GET['search'])) {
+    $where[] = "name LIKE ?";
+    $params[] = '%' . $_GET['search'] . '%';
+}
+if (!empty($_GET['village'])) {
+    $where[] = "village = ?";
+    $params[] = $_GET['village'];
+}
+if (!empty($_GET['kattalai'])) {
+    $where[] = "kattalai = ?";
+    $params[] = $_GET['kattalai'];
+}
+$where_sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+// Get total records for pagination
+$stmt = $con->prepare("SELECT COUNT(*) FROM $tbl_family $where_sql");
+if ($params) $stmt->bind_param(str_repeat('s', count($params)), ...$params);
+$stmt->execute();
+$stmt->bind_result($total_records);
+$stmt->fetch();
+$stmt->close();
+
+// Get paginated records
+$sql = "SELECT * FROM $tbl_family $where_sql ORDER BY id DESC LIMIT ? OFFSET ?";
+$stmt = $con->prepare($sql);
+if ($params) {
+    $types = str_repeat('s', count($params)) . 'ii';
+    $bind_params = array_merge($params, [$per_page, $offset]);
+    $stmt->bind_param($types, ...$bind_params);
+} else {
+    $stmt->bind_param('ii', $per_page, $offset);
+}
+$stmt->execute();
+$result = $stmt->get_result();
+$families = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 include('../includes/header.php');
 
@@ -89,6 +130,18 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
     color: #fff !important;
     background-color: #0d6efd !important;
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+    border: none;
+    color: #fff !important;
+}
+
+.table thead th {
+    background: #e9ecef !important;
+    background-image: none !important;
+    color: #212529 !important;
 }
 </style>
 
@@ -194,7 +247,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover datatable">
+                    <table class="table table-hover">
                         <thead>
                             <tr>
                                 <th>Member ID</th>
@@ -224,7 +277,6 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                         <td>
                                             <div class="member-info">
                                                 <?php
-                                                // Get member initials for default avatar
                                                 $name_parts = explode(' ', $family['name']);
                                                 $initials = '';
                                                 if (count($name_parts) >= 2) {
@@ -232,21 +284,14 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                                 } else {
                                                     $initials = strtoupper(substr($family['name'], 0, 2));
                                                 }
-                                                
-                                                // Determine the image path
                                                 $image_path = '';
                                                 $image_alt = htmlspecialchars($family['name']);
-                                                
-                                                // Check if member has a custom image
                                                 if (!empty($family['image']) && file_exists("../images/member/" . $family['image'])) {
                                                     $image_path = "../images/member/" . $family['image'];
-                                                } 
-                                                // Check if there's a default image in modern directory
-                                                elseif (file_exists("../images/default.png")) {
+                                                } elseif (file_exists("../images/default.png")) {
                                                     $image_path = "../images/default.png";
                                                 }
                                                 ?>
-                                                
                                                 <?php if ($image_path): ?>
                                                     <img src="<?php echo $image_path; ?>" 
                                                          class="member-avatar" 
@@ -260,7 +305,6 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                                         <?php echo $initials; ?>
                                                     </div>
                                                 <?php endif; ?>
-                                                
                                                 <div>
                                                     <div class="member-name"><?php echo htmlspecialchars($family['name']); ?></div>
                                                     <?php if ($family['w_name']): ?>
@@ -307,6 +351,28 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                             ?>
                         </tbody>
                     </table>
+
+                    <!-- PHP Pagination Controls -->
+                    <?php
+                    $total_pages = ceil($total_records / $per_page);
+                    if ($total_pages > 1):
+                    ?>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-end">
+                            <li class="page-item<?php if ($page <= 1) echo ' disabled'; ?>">
+                                <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>" tabindex="-1">Previous</a>
+                            </li>
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                <li class="page-item<?php if ($i == $page) echo ' active'; ?>">
+                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>"><?php echo $i; ?></a>
+                                </li>
+                            <?php endfor; ?>
+                            <li class="page-item<?php if ($page >= $total_pages) echo ' disabled'; ?>">
+                                <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

@@ -1,5 +1,7 @@
 <?php
-include('../header.php');
+include('../init.php');
+check_login();
+include('../includes/header.php');
 //var_dump($_POST);
 
 $rec_per_page = 25;
@@ -25,157 +27,168 @@ $total_pages = ceil($total_records / $rec_per_page);
 //echo $total_pages;
 ?> 	
 
-<style>
-    .table>thead:first-child>tr:first-child>th {
-        border-top: 0;
-        background: #e4ece7;
-    }
-    .box-body {
-        margin-top: 20px;  
-        border-radius:8px;
-        margin-left: 10px;
-        border: 2px solid #d4d4d4;
-    }
-    tbody#tbody > tr > td {
-        border-top: 2px solid #d4d4d4;
-    }
-    #pagi{
-        padding-left: 300px;  
-    }
-    #page{
-        padding-right:0px;
-    }
-    #box.box{
-        border:0px;
-    }
-</style>
-<!-- Content Header (Page header) -->
-<section class="content-header">
-    <div class="container-fluid">
-        <h2 class="container text-center">Horoscope List<a href="addhoroscope.php"  class="btn btn-info pull-right"> <span class="glyphicon glyphicon-plus"></span></a>&nbsp;<a href="searchhoroscope.php"  class="btn btn-info pull-right"><span class="glyphicon glyphicon-search"></span></a> </h2>
-    </div>
-</section>
-<div class="col-md-12">
-    <div  class="col-sm-6">
-        <br>
-        <form method='POST'>
-            <div  class="col-sm-4"><input type="text" name="reg_no" class="form-control" placeholder="Reg no" > </div>
-            <div  class="col-sm-5"><input type="text" name = 'keyword' class="form-control" placeholder="Name/Mobile No" ></div>
-
-            <input type="hidden" name="filter" >
-            <div  class="col-sm-3">  <button type="submit" name="submit" class="btn btn-info">Search</button></div>
-        </form>
-    </div>
-
-    <div class="col-sm-6 dataTables_paginate paging_simple_numbers" id="example2_paginate">
-        <ul id="pagi" class="pagination">
-            <?php
-            if ($total_records > $rec_per_page) {
-                ?>
-                <li class="paginate_button previous" id="example2_previous">
-                    <a href="#" aria-controls="example2" data-dt-idx="0" tabindex="0">Prev</a>
-                </li>
-                <?php
-                for ($i = 1; $i <= $total_pages; $i++) {
-                    ?>
-                    <li class="paginate_button ">
-                        <a href="listhoroscope.php?page=<?php echo $i ?>" aria-controls="example2" data-dt-idx="1" tabindex="0"><?php echo $i; ?></a>
-                    </li>
-                <?php } ?>
-                <li class="paginate_button next" id="example2_next">
-                    <a href="#" aria-controls="example2" data-dt-idx="7" tabindex="0">Next</a>
-                </li>
-            <?php } ?>
-        </ul></div>
-</div>
-<!-- Main content -->
-<section class="content">
+<div class="container-fluid">
     <div class="row">
-        <div class="col-xs-12">
-            <div class="box table-responsive">
-                <div class="box-body">
-                    <table id="example2" class="table table-bordered table-hover">
-                        <thead>
-                            <tr> 
-                                <th width="3%">S.No</th>
-                                <th width="7%">Photo</th>           
-                                <th width="13%">Name & Reg.No</th>
-                                <th width="13%">Personal details</th>
-                                <th width="11%">Horo details</th>
-                                <th class="col-sm-1">status</th>
-                                <th class="col-sm-2">Address</th>				 
-                                <th class="col-sm-2">Other Details</th>				 
-
-                            </tr>		
-                        </thead>
-                        <tbody id="tbody">
-                            <?php
-                            $result = get_horo_list($where);
-                            $counter = 0;
-                            if ($result) {
-                                while ($row = mysqli_fetch_array($result)) {
-                                    ?>
-                                    <tr> 
-                                        <td><?php echo ++$counter; ?></td>
-                                        <td><img src="../images/horo/<?php echo $row['photo'] ?>" width="100" height="100" class="img-responsive"/></td>   
-                                        <td><a id="a" href="viewhoroscope.php?id=<?php echo $row['id'] ?>"><?php echo $row['name'] ?></a><?php echo "<br>" . ($row['reg_no']); ?></td>
-                                        <td><?php echo $row['qualification'] . "<br>" . $row['occupation'] ?></td>
-                                        <td><?php
-                                            //var_dump($row); 
-                                            //echo 'test';
-                                            echo get_raasi($row['raasi']);
-                                            echo "<br>";
-                                            echo get_star($row['star']);
-                                            echo "<br>";
-                                            echo ($row['raaghu_kaedhu'] > 0) ? "Yes" : "No";
-                                            echo "<br>";
-                                            echo ($row['sevvai'] > 0) ? "Yes" : "No";
-                                            ?></td>
-                                        <td><?php echo $row['status'] ?></td>
-                                        <td><?php echo $row['mobile_no'] . "<br>" . $row['email'] . "<br>" . $row['address'] ?></td>
-                                        <td><?php echo get_kulam($row['kulam']) . "<br>" . $row['temple'] . "<br>" . $row['height'] ?> Cms<br><?php echo $row['weight'] ?> Kgs</td>
-                                    </tr>
-
-                                    <?php
-                                }
-                            }
-                            mysqli_close($con);
-                            ?>
-
-                        </tbody>
-                    </table>
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Horoscope List</h2>
+                <div class="btn-group" role="group">
+                    <a href="addhoroscope.php" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Add New
+                    </a>
+                    <a href="searchhoroscope.php" class="btn btn-info">
+                        <i class="bi bi-search"></i> Search
+                    </a>
                 </div>
-                <!-- /.box-body -->
+            </div>
 
+            <!-- Search Form -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="POST" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="reg_no" class="form-label">Registration No</label>
+                            <input type="text" name="reg_no" class="form-control" id="reg_no" placeholder="Enter registration number">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="keyword" class="form-label">Name/Mobile No</label>
+                            <input type="text" name="keyword" class="form-control" id="keyword" placeholder="Enter name or mobile number">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <input type="hidden" name="filter">
+                            <button type="submit" name="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
-                <div class="col-sm-12 dataTables_paginate paging_simple_numbers pull-right" id="example2_paginate">
-                    <ul id="page" class="pagination pull-right">
-                        <?php
-                        if ($total_records > $rec_per_page) {
-                            ?>
-                            <li class="paginate_button previous" id="example2_previous">
-                                <a href="#" aria-controls="example2" data-dt-idx="0" tabindex="0">Prev</a>
-                            </li>
-                            <?php
-                            for ($i = 1; $i <= $total_pages; $i++) {
-                                ?>
-                                <li class="paginate_button ">
-                                    <a href="listhoroscope.php?page=<?php echo $i ?>" aria-controls="example2" data-dt-idx="1" tabindex="0"><?php echo $i; ?></a>
-                                </li>
-                            <?php } ?>
-                            <li class="paginate_button next" id="example2_next">
-                                <a href="#" aria-controls="example2" data-dt-idx="7" tabindex="0">Next</a>
+            <!-- Pagination -->
+            <?php if ($total_records > $rec_per_page) { ?>
+                <nav aria-label="Page navigation" class="mb-3">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item">
+                            <a class="page-link" href="listhoroscope.php?page=<?php echo max(1, $curr_page - 1) ?>">
+                                <i class="bi bi-chevron-left"></i> Previous
+                            </a>
+                        </li>
+                        <?php for ($i = 1; $i <= $total_pages; $i++) { ?>
+                            <li class="page-item <?php echo ($i == $curr_page) ? 'active' : ''; ?>">
+                                <a class="page-link" href="listhoroscope.php?page=<?php echo $i ?>"><?php echo $i; ?></a>
                             </li>
                         <?php } ?>
-                    </ul></div>
+                        <li class="page-item">
+                            <a class="page-link" href="listhoroscope.php?page=<?php echo min($total_pages, $curr_page + 1) ?>">
+                                Next <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            <?php } ?>
+
+            <!-- Horoscope List Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-ul"></i> Horoscope Records (<?php echo $total_records; ?> total)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr> 
+                                    <th width="3%">S.No</th>
+                                    <th width="8%">Reg No</th>
+                                    <th width="15%">Name</th>
+                                    <th width="8%">Gender</th>
+                                    <th width="8%">Age</th>
+                                    <th width="12%">Mobile</th>
+                                    <th width="10%">Status</th>
+                                    <th width="15%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $sql = "SELECT * FROM $tbl_matrimony WHERE `deleted`=0 $where ORDER BY id DESC LIMIT $offset, $rec_per_page";
+                                $result = mysqli_query($con, $sql);
+                                $i = $offset + 1;
+                                while ($row = mysqli_fetch_array($result)) {
+                                    ?>
+                                    <tr>
+                                        <td><?php echo $i; ?></td>
+                                        <td><?php echo $row['reg_no']; ?></td>
+                                        <td>
+                                            <strong><?php echo $row['name']; ?></strong>
+                                            <?php if ($row['email']) { ?>
+                                                <br><small class="text-muted"><?php echo $row['email']; ?></small>
+                                            <?php } ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-<?php echo ($row['gender'] == 'male') ? 'primary' : 'danger'; ?>">
+                                                <?php echo ucfirst($row['gender']); ?>
+                                            </span>
+                                        </td>
+                                        <td><?php echo $row['age']; ?></td>
+                                        <td><?php echo $row['mobile_no']; ?></td>
+                                        <td>
+                                            <?php if ($row['status'] == 'closed') { ?>
+                                                <span class="badge bg-secondary">Closed</span>
+                                            <?php } else { ?>
+                                                <span class="badge bg-success">Active</span>
+                                            <?php } ?>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="viewhoroscope.php?id=<?php echo $row['id']; ?>" 
+                                                   class="btn btn-sm btn-outline-primary" 
+                                                   title="View Details">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="updatehoroscope.php?id=<?php echo $row['id']; ?>" 
+                                                   class="btn btn-sm btn-outline-warning" 
+                                                   title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <?php if ($row['status'] != 'closed') { ?>
+                                                    <a href="closeprofile.php?id=<?php echo $row['id']; ?>" 
+                                                       class="btn btn-sm btn-outline-secondary" 
+                                                       title="Close Profile"
+                                                       onclick="return confirm('Are you sure you want to close this profile?')">
+                                                        <i class="bi bi-lock"></i>
+                                                    </a>
+                                                <?php } ?>
+                                                <a href="deletehoroscope.php?id=<?php echo $row['id']; ?>" 
+                                                   class="btn btn-sm btn-outline-danger" 
+                                                   title="Delete"
+                                                   onclick="return confirm('Are you sure you want to delete this record?')">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php
+                                    $i++;
+                                }
+                                if (mysqli_num_rows($result) == 0) {
+                                    ?>
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4">
+                                            <div class="text-muted">
+                                                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                                <p class="mt-2">No horoscope records found</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php } ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <!-- /.box -->
         </div>
-        <!-- /.col -->
     </div>
-    <!-- /.row -->
-</section>
-<!-- /.content -->
-<?php
-include('../footer.php');
-?>
+</div>
+
+<?php include('../includes/footer.php'); ?>

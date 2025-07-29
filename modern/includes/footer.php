@@ -41,7 +41,7 @@
                 responsive: true,
                 language: {
                     search: "Search:",
-                    lengthMenu: "Show _MENU_ entries per page",
+                    lengthMenu: "_MENU_",
                     info: "Showing _START_ to _END_ of _TOTAL_ entries",
                     paginate: {
                         first: "First",
@@ -50,10 +50,9 @@
                         previous: "Previous"
                     }
                 },
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
-                     '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>' +
+                dom: '<"row align-items-center"<"col-sm-12 col-md-7 d-flex align-items-center gap-3"l i><"col-sm-12 col-md-5 d-flex justify-content-end"p>>' +
                      '<"row"<"col-sm-12"tr>>' +
-                     '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                     '<"row align-items-center"<"col-sm-12 col-md-7 d-flex align-items-center gap-3"l i><"col-sm-12 col-md-5 d-flex justify-content-end"p>>',
                 pageLength: 25,
                 lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
             });
