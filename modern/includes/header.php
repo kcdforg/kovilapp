@@ -200,7 +200,7 @@
     <!-- jQuery (needed for some plugins) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
-<body>
+<body class="d-flex flex-column min-vh-100">
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
@@ -225,11 +225,6 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?php echo $path; ?>/user/userlist.php">
-                            <i class="bi bi-person-badge"></i> Users
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="<?php echo $path; ?>/matrimony/listhoroscope.php">
                             <i class="bi bi-heart-fill"></i> Matrimony
                         </a>
@@ -247,9 +242,19 @@
                             <i class="bi bi-person-circle"></i> <?php echo $_SESSION['name'] ?? 'Admin'; ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="<?php echo $path; ?>/profile.php">Profile</a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/profile.php">
+                                <i class="bi bi-person"></i> Profile
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/user/userlist.php">
+                                <i class="bi bi-person-badge"></i> Users
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/settings/">
+                                <i class="bi bi-gear"></i> Settings
+                            </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="<?php echo $path; ?>/logout.php">Logout</a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/logout.php">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a></li>
                         </ul>
                     </li>
                 </ul>
@@ -258,4 +263,4 @@
     </nav>
 
     <!-- Main Content Container -->
-    <div class="container-fluid mt-4"> 
+    <main class="container-fluid mt-4 flex-fill"> 

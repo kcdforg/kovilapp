@@ -23,6 +23,12 @@ $tbl_donation = 'donation';
 $tbl_horoscope = 'horoscope';
 $tbl_subscription = 'subscription';
 
+// Subscription Module Tables
+$tbl_subscription_events = 'subscription_events';
+$tbl_receipt_books = 'receipt_books';
+$tbl_member_subscriptions = 'member_subscriptions';
+$tbl_receipt_details = 'receipt_details';
+
 // Dynamically determine the base path for assets
 $script_name = dirname($_SERVER['SCRIPT_NAME']);
 $script_name = rtrim($script_name, '/\\');

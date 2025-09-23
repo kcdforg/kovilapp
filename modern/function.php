@@ -10,7 +10,12 @@ function check_login() {
     //Check whether the session variable username is present or not
     if (!isset($_SESSION['username']) || (($_SESSION['username']) == '')) {
         redirect('index.php');
+        exit; // Ensure script stops after redirect
     }
+}
+
+function is_logged_in() {
+    return isset($_SESSION['username']) && !empty($_SESSION['username']);
 }
 
 function connectdb() {
@@ -232,11 +237,10 @@ function count_child($father_id) {
 function add_child($child) {
     global $con, $tbl_child;
     if (count($child) && $child['c_name'] != '') {
-        //$fam_id=$child['fam_id'];
         $father_id = $child['father_id'];
+        $fam_id = $father_id; // fam_id is the same as father_id
         $c_name = $child['c_name'];
-        $c_dob = $child['dob']['year'] . "-" . $child['dob']['month'] . "-" . $child['dob']['date'];
-        //  $c_dob = $child['c_dob'];
+        $c_dob = $child['c_dob'];
         $c_gender = $child['c_gender'];
         $c_blood_group = $child['c_blood_group'];
         $c_marital_status = $child['c_marital_status'];
@@ -246,11 +250,14 @@ function add_child($child) {
         $c_occupation = $child['c_occupation'];
         $c_education_details = $child['c_education_details'];
         $c_occupation_details = $child['c_occupation_details'];
-        //  $c_created_date = $child['c_created_date'];
-        //$c_created_by = $child['c_created_by'];
+        $c_image = '';
+        $c_created_date = date('Y-m-d');
+        $c_created_by = $_SESSION['username'] ?? 'admin';
+        $c_lastmodified_by = $_SESSION['username'] ?? 'admin';
+        $c_lastmodified_date = date('Y-m-d');
 
-        $sql = "INSERT INTO `$tbl_child`(`father_id`, `c_name`, `c_dob`, `c_gender`, `c_blood_group`, `c_marital_status`,`c_qualification`, `c_mobile_no`, `c_email`, `c_occupation`, `c_education_details`, `c_occupation_details`) 
-					VALUES ('$father_id', '$c_name', '$c_dob', '$c_gender', '$c_blood_group', '$c_marital_status', '$c_qualification', '$c_mobile_no', '$c_email', '$c_occupation', '$c_education_details', '$c_occupation_details')";
+        $sql = "INSERT INTO `$tbl_child`(`fam_id`, `father_id`, `c_name`, `c_dob`, `c_gender`, `c_blood_group`, `c_marital_status`,`c_qualification`, `c_mobile_no`, `c_email`, `c_occupation`, `c_education_details`, `c_occupation_details`, `c_image`, `c_created_date`, `c_created_by`, `c_lastmodified_by`, `c_lastmodified_date`) 
+					VALUES ('$fam_id', '$father_id', '$c_name', '$c_dob', '$c_gender', '$c_blood_group', '$c_marital_status', '$c_qualification', '$c_mobile_no', '$c_email', '$c_occupation', '$c_education_details', '$c_occupation_details', '$c_image', '$c_created_date', '$c_created_by', '$c_lastmodified_by', '$c_lastmodified_date')";
         return mysqli_query($con, $sql);
     }
 }
@@ -288,8 +295,7 @@ function add_horoscope($horo) {
         $age = $horo['age'];
         //   $birth_date = $horo['birth_date'];
         //   $birth_time = $horo['birth_time'];
-        $birth_date = $horo['birth_date']['year'] . "-" . $horo['birth_date']['month'] . "-" . $horo['birth_date']['day'];
-        $birth_time = $horo['birth_time']['hour'] . ":" . $horo['birth_time']['min'] . ":00";
+
         $birth_place = $horo['birth_place'];
         $raasi = $horo['raasi'];
         $star = $horo['star'];
@@ -342,8 +348,58 @@ function add_horoscope($horo) {
         $pp_asset_details = $horo['pp_asset_details'];
         $pp_expectation = $horo['pp_expectation'];
 
-        $sql = "INSERT INTO `$tbl_matrimony` (`name`,`father_name`, `mother_name`,`gender`, `age`, `blood_group`, `qualification`,  `occupation`, `email`, `birth_date`, `birth_time`,`birth_place`,`mobile_no`, `address`,`sibling`, `raasi`,`star`,`laknam`,`padham`,`raaghu_kaedhu`, `sevvai`, `marital_status`, `country`,`income`,`kulam`, `temple`,`m_kulam`, `mm_kulam`, `pm_kulam`,`height`, `weight`, `colour`,`f_occupation`,`m_occupation`,`education_details`,`college_details`,`occupation_details`,`ref_id`,`asset_details`,`pp_occupation`,`pp_education`,`pp_work_location`,`pp_salary`,`pp_asset_details`,`pp_expectation`,`contact_person`,`relationship`) 
-                                    VALUES ('$name', '$father_name', '$mother_name', '$gender', '$age', '$blood_group', '$qualification', '$occupation', '$email', '$birth_date','$birth_time','$birth_place','$mobile_no', '$address','$sibling','$raasi', '$star','$laknam','$padham','$raaghu_kaedhu','$sevvai','$marital_status','$country','$income','$kulam','$temple','$m_kulam','$mm_kulam','$pm_kulam','$height','$weight','$colour','$f_occupation','$m_occupation','$education_details','$college_details','$occupation_details','$ref_id','$asset_details' ,'$pp_occupation','$pp_education','$pp_work_location','$pp_salary','$pp_asset_details','$pp_expectation','$contact_person','$relationship')";
+        $reg_no = intval($horo['reg_no'] ?? get_max_mat_no());
+        $referred_by = $horo['referred_by'] ?? '';
+        $registered_date = $horo['registered_date'] ?? date('Y-m-d'); // date only
+        $about_myself = $horo['about_myself'] ?? '';
+        
+        // Additional fields that might be in database
+        $status = $horo['status'] ?? 'active';
+        $admin_notes = $horo['admin_notes'] ?? '';
+        $close_reason_code = intval($horo['close_reason_code'] ?? 0); // int(11)
+        $married_to = intval($horo['married_to'] ?? 0); // int(11)
+        $close_reason_detail = $horo['close_reason_detail'] ?? '';
+        
+        // Missing fields from schema
+        $photo = $horo['photo'] ?? '';
+        $horo_file = $horo['horo'] ?? '';
+        $deleted = intval($horo['deleted'] ?? 0); // tinyint(1)
+        
+        // Correct data types for boolean fields (should be varchar in schema)
+        $raaghu_kaedhu = isset($horo['raaghu_kaedhu']) ? "1" : "0"; // varchar(25)
+        $sevvai = isset($horo['sevvai']) ? "1" : "0"; // varchar(25)
+        
+        // Ensure integer fields are properly converted
+        $age = intval($horo['age'] ?? 0);
+        $height = intval($horo['height'] ?? 0);
+        $weight = intval($horo['weight'] ?? 0);
+        $ref_id = intval($horo['ref_id'] ?? 0);
+        
+        // Fix birth_date formatting to handle empty values
+        $birth_day = $horo['birth_date']['day'] ?? '';
+        $birth_month = $horo['birth_date']['month'] ?? '';
+        $birth_year = $horo['birth_date']['year'] ?? '';
+        
+        // Only create date if all components are present
+        if (!empty($birth_day) && !empty($birth_month) && !empty($birth_year)) {
+            $birth_date = $birth_year . "-" . str_pad($birth_month, 2, '0', STR_PAD_LEFT) . "-" . str_pad($birth_day, 2, '0', STR_PAD_LEFT);
+        } else {
+            $birth_date = '0000-00-00'; // Default date for empty values
+        }
+        
+        // Fix birth_time formatting to handle empty values
+        $birth_hour = $horo['birth_time']['hour'] ?? '';
+        $birth_min = $horo['birth_time']['min'] ?? '';
+        
+        // Only create time if both components are present
+        if (!empty($birth_hour) && !empty($birth_min)) {
+            $birth_time = str_pad($birth_hour, 2, '0', STR_PAD_LEFT) . ":" . str_pad($birth_min, 2, '0', STR_PAD_LEFT) . ":00";
+        } else {
+            $birth_time = '00:00:00'; // Default time for empty values
+        }
+
+        $sql = "INSERT INTO `$tbl_matrimony` (`reg_no`,`name`,`father_name`, `mother_name`,`gender`, `age`, `blood_group`, `qualification`,  `occupation`, `email`, `birth_date`, `birth_time`,`birth_place`,`mobile_no`, `address`,`sibling`, `raasi`,`star`,`laknam`,`padham`,`raaghu_kaedhu`, `sevvai`, `marital_status`, `country`,`income`,`kulam`, `temple`,`m_kulam`, `mm_kulam`, `pm_kulam`,`height`, `weight`, `colour`,`f_occupation`,`m_occupation`,`education_details`,`college_details`,`occupation_details`,`ref_id`,`referred_by`,`registered_date`,`about_myself`,`status`,`admin_notes`,`photo`,`horo`,`deleted`,`close_reason_code`,`married_to`,`close_reason_detail`,`asset_details`,`pp_occupation`,`pp_education`,`pp_work_location`,`pp_salary`,`pp_asset_details`,`pp_expectation`,`contact_person`,`relationship`) 
+                                    VALUES ('$reg_no','$name', '$father_name', '$mother_name', '$gender', '$age', '$blood_group', '$qualification', '$occupation', '$email', '$birth_date','$birth_time','$birth_place','$mobile_no', '$address','$sibling','$raasi', '$star','$laknam','$padham','$raaghu_kaedhu','$sevvai','$marital_status','$country','$income','$kulam','$temple','$m_kulam','$mm_kulam','$pm_kulam','$height','$weight','$colour','$f_occupation','$m_occupation','$education_details','$college_details','$occupation_details','$ref_id','$referred_by','$registered_date','$about_myself','$status','$admin_notes','$photo','$horo_file','$deleted','$close_reason_code','$married_to','$close_reason_detail','$asset_details' ,'$pp_occupation','$pp_education','$pp_work_location','$pp_salary','$pp_asset_details','$pp_expectation','$contact_person','$relationship')";
         //echo $sql;
         return mysqli_query($con, $sql);
     }
@@ -641,11 +697,8 @@ function update_child($id, $cdata) {
     global $con, $tbl_child;
 
     if (count($cdata) > 0) {
-        //  $fam_id=$cdata['fam_id'];
-        // $father_id = $cdata['father_id'];
         $c_name = $cdata['c_name'];
-        $c_dob = $cdata['dob']['year'] . "-" . $cdata['dob']['month'] . "-" . $cdata['dob']['date'];
-        // $c_dob = ($cdata['c_dob'] == '') ? 'null' : "'" . $cdata['c_dob'] . "'";
+        $c_dob = $cdata['c_dob'];
         $c_gender = $cdata['c_gender'];
         $c_blood_group = $cdata['c_blood_group'];
         $c_marital_status = $cdata['c_marital_status'];
@@ -653,8 +706,6 @@ function update_child($id, $cdata) {
         $c_occupation = $cdata['c_occupation'];
         $c_mobile_no = $cdata['c_mobile_no'];
         $c_email = $cdata['c_email'];
-        // $c_created_by = $cdata['c_created_by'];
-        // $c_created_date = $cdata['c_created_date'];
         $c_education_details = $cdata['c_education_details'];
         $c_occupation_details = $cdata['c_occupation_details'];
 

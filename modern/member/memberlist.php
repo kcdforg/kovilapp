@@ -252,8 +252,9 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                             <tr>
                                 <th>Member ID</th>
                                 <th>Name</th>
-                                <th>Village</th>
                                 <th>Mobile</th>
+                                <th>Permanent Address</th>
+                                <th>Current Address</th>
                                 <th>Kattalai</th>
                                 <th>Actions</th>
                             </tr>
@@ -272,6 +273,8 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                         <td>
                                             <?php if ($family['member_id']): ?>
                                                 <?php echo htmlspecialchars($family['member_id']); ?>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
@@ -313,8 +316,43 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td><?php echo htmlspecialchars($family['village']); ?></td>
-                                        <td><?php echo htmlspecialchars($family['mobile_no']); ?></td>
+                                        <td>
+                                            <?php if ($family['mobile_no']): ?>
+                                                <?php echo htmlspecialchars($family['mobile_no']); ?>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php 
+                                            $permanent_address = [];
+                                            if ($family['village']) $permanent_address[] = $family['village'];
+                                            if ($family['taluk']) $permanent_address[] = $family['taluk'];
+                                            if ($family['district']) $permanent_address[] = $family['district'];
+                                            if ($family['state']) $permanent_address[] = $family['state'];
+                                            if ($family['pincode']) $permanent_address[] = $family['pincode'];
+                                            
+                                            if (!empty($permanent_address)): ?>
+                                                <small><?php echo htmlspecialchars(implode(', ', $permanent_address)); ?></small>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php 
+                                            $current_address = [];
+                                            if ($family['c_village']) $current_address[] = $family['c_village'];
+                                            if ($family['c_taluk']) $current_address[] = $family['c_taluk'];
+                                            if ($family['c_district']) $current_address[] = $family['c_district'];
+                                            if ($family['c_state']) $current_address[] = $family['c_state'];
+                                            if ($family['c_pincode']) $current_address[] = $family['c_pincode'];
+                                            
+                                            if (!empty($current_address)): ?>
+                                                <small><?php echo htmlspecialchars(implode(', ', $current_address)); ?></small>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td>
                                             <?php if ($kattalai_name): ?>
                                                 <span class="badge bg-info"><?php echo htmlspecialchars($kattalai_name); ?></span>
@@ -346,7 +384,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                     <?php
                                 }
                             } else {
-                                echo "<tr><td colspan='6' class='text-center text-muted'>No members found</td></tr>";
+                                echo "<tr><td colspan='7' class='text-center text-muted'>No members found</td></tr>";
                             }
                             ?>
                         </tbody>

@@ -3,6 +3,11 @@ session_start();
 
 include('init.php');
 
+// Redirect if already logged in
+if (isset($_SESSION['username']) && !empty($_SESSION['username'])) {
+    redirect('dashboard.php');
+}
+
 $error_message = '';
 
 if (isset($_POST['username']) && $_POST['username'] != '') {

@@ -391,3 +391,15 @@ ul.pagination li.active > a.page-link {
   color: #fff !important;
   box-shadow: none !important;
 } 
+
+html, body {
+  height: 100%;
+}
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+footer {
+  flex-shrink: 0;
+} 

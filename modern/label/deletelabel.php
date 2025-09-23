@@ -1,20 +1,20 @@
 <?php
-include('../popupheader.php');
+include('../init.php');
+check_login();
+
 if (!isset($_POST['id'])) {
-    echo "ERROR THE PAGE CANNOT BE CONNECT";
+    echo "<script>alert('ERROR: THE PAGE CANNOT BE CONNECTED'); window.close();</script>";
     die;
 }
+
 $id = $_POST['id'];
 $result = mysqli_query($con, "DELETE FROM $tbl_labels WHERE id=" . $id);
-if (!$con) {
-    die('could not connect:' . mysqli_error($con));
+
+if (!$result) {
+    echo "<script>alert('Error: " . mysqli_error($con) . "'); window.close();</script>";
 } else {
-    ?>
-    <div class="callout callout-danger">
-        <h4>Deleted successfully!</h4>
-    </div>
-    <?php
+    echo "<script>alert('Label deleted successfully!'); window.close(); window.opener.location.reload();</script>";
 }
+
 mysqli_close($con);
-include('../footer.php');
 ?>

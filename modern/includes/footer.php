@@ -1,5 +1,5 @@
-    </div> <!-- End of main container -->
-
+    </main>
+    
     <!-- Footer -->
     <footer class="mt-5 py-4" style="background: linear-gradient(135deg, #f8f9fc 0%, #e3e6f0 100%); border-top: 1px solid #e3e6f0;">
         <div class="container-fluid">
