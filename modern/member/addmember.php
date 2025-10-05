@@ -74,31 +74,75 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 include('../includes/header.php');
 ?>
 
-<div class="row">
+<style>
+/* Fluid Layout with Margins */
+.fluid-with-margins {
+    margin-left: 2rem;
+    margin-right: 2rem;
+}
+
+@media (min-width: 1400px) {
+    .fluid-with-margins {
+        margin-left: 4rem;
+        margin-right: 4rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .fluid-with-margins {
+        margin-left: 6rem;
+        margin-right: 6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .fluid-with-margins {
+        margin-left: 1rem;
+        margin-right: 1rem;
+    }
+}
+</style>
+
+<div class="row fluid-with-margins">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="h3 mb-0">Add New Member</h1>
-            <a href="memberlist.php" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Back to List
-            </a>
+            <div class="d-flex gap-2">
+                <a href="memberlist.php" class="btn btn-outline-primary">
+                    <i class="bi bi-list"></i> View List (Fluid Layout)
+                </a>
+                <a href="memberlist.php" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+            </div>
         </div>
     </div>
 </div>
 
 <?php if ($success_message): ?>
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle"></i> <?php echo $success_message; ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<div class="row fluid-with-margins">
+    <div class="col-12">
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle"></i> <?php echo $success_message; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     </div>
+</div>
 <?php endif; ?>
 
 <?php if ($error_message): ?>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-triangle"></i> <?php echo $error_message; ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<div class="row fluid-with-margins">
+    <div class="col-12">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> <?php echo $error_message; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     </div>
+</div>
 <?php endif; ?>
 
+<div class="row fluid-with-margins">
+    <div class="col-12">
 <form method="POST" class="needs-validation" novalidate>
     <!-- Husband Information -->
     <div class="card mb-4">
@@ -543,6 +587,8 @@ include('../includes/header.php');
         </div>
     </div>
 </form>
+    </div>
+</div>
 
 <script>
 // Form validation

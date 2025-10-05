@@ -50,7 +50,7 @@ $result = $stmt->get_result();
 $families = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-include('../includes/header.php');
+include('../includes/header_fixed.php');
 
 // Handle success/error messages
 $success_message = '';
@@ -66,33 +66,6 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 ?>
 
 <style>
-/* Fluid Layout with Margins */
-.fluid-with-margins {
-    margin-left: 2rem;
-    margin-right: 2rem;
-}
-
-@media (min-width: 1400px) {
-    .fluid-with-margins {
-        margin-left: 4rem;
-        margin-right: 4rem;
-    }
-}
-
-@media (min-width: 1600px) {
-    .fluid-with-margins {
-        margin-left: 6rem;
-        margin-right: 6rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .fluid-with-margins {
-        margin-left: 1rem;
-        margin-right: 1rem;
-    }
-}
-
 .member-avatar {
     width: 40px;
     height: 40px;
@@ -172,9 +145,20 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 }
 </style>
 
+<!-- Layout Comparison Notice -->
+<div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <div>
+            <strong>Fixed Layout:</strong> This version uses a fixed-width layout (max-width: 1200px) for comparison with the default fluid layout. 
+            <br><small class="text-muted">Notice how the content is constrained to a readable width, especially on larger screens.</small>
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
 
 <?php if ($success_message): ?>
-    <div class="row fluid-with-margins">
+    <div class="row">
         <div class="col-12">
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="bi bi-check-circle-fill"></i> <?php echo htmlspecialchars($success_message); ?>
@@ -185,7 +169,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 <?php endif; ?>
 
 <?php if ($error_message): ?>
-    <div class="row fluid-with-margins">
+    <div class="row">
         <div class="col-12">
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="bi bi-exclamation-triangle-fill"></i> <?php echo htmlspecialchars($error_message); ?>
@@ -195,16 +179,19 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
     </div>
 <?php endif; ?>
 
-<div class="row fluid-with-margins">
+<div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h3 mb-0">Member Management</h1>
                 <small class="text-muted">
-                    <i class="bi bi-arrows-expand"></i> Fluid Layout with Responsive Margins
+                    <i class="bi bi-layout-text-window-reverse"></i> Fixed Layout Mode
                 </small>
             </div>
             <div class="d-flex gap-2">
+                <a href="memberlist.php" class="btn btn-outline-warning">
+                    <i class="bi bi-arrows-expand"></i> View Fluid Layout
+                </a>
                 <a href="addmember.php" class="btn btn-primary">
                     <i class="bi bi-person-plus"></i> Add New Member
                 </a>
@@ -214,7 +201,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 </div>
 
 <!-- Search and Filter Section -->
-<div class="row mb-4 fluid-with-margins">
+<div class="row mb-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
@@ -271,7 +258,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 </div>
 
 <!-- Members Table -->
-<div class="row fluid-with-margins">
+<div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
@@ -611,4 +598,4 @@ function closeModalAndRefresh() {
 // No need to initialize here to avoid conflicts
 </script>
 
-<?php include('../includes/footer.php'); ?> 
+<?php include('../includes/footer_fixed.php'); ?>

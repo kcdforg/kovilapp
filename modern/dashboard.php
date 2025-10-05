@@ -53,14 +53,43 @@ try {
 include('includes/header.php');
 ?>
 
-<div class="row">
+<style>
+/* Fluid Layout with Margins */
+.fluid-with-margins {
+    margin-left: 2rem;
+    margin-right: 2rem;
+}
+
+@media (min-width: 1400px) {
+    .fluid-with-margins {
+        margin-left: 4rem;
+        margin-right: 4rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .fluid-with-margins {
+        margin-left: 6rem;
+        margin-right: 6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .fluid-with-margins {
+        margin-left: 1rem;
+        margin-right: 1rem;
+    }
+}
+</style>
+
+<div class="row fluid-with-margins">
     <div class="col-12">
         <h1 class="h3 mb-4">Dashboard</h1>
     </div>
 </div>
 
 <!-- Statistics Cards -->
-<div class="row mb-4">
+<div class="row mb-4 fluid-with-margins">
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="stats-card">
             <div class="d-flex justify-content-between align-items-center">
@@ -156,7 +185,7 @@ include('includes/header.php');
 </div>
 
 <!-- Recent Activities -->
-<div class="row">
+<div class="row fluid-with-margins">
     <div class="col-lg-8 mb-4">
         <div class="card">
             <div class="card-header">
@@ -249,7 +278,7 @@ include('includes/header.php');
 </div>
 
 <!-- Charts Section (if needed) -->
-<div class="row">
+<div class="row fluid-with-margins">
     <div class="col-12">
         <div class="card">
             <div class="card-header">

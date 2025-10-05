@@ -172,6 +172,17 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 }
 </style>
 
+<!-- Layout Comparison Notice -->
+<div class="alert alert-warning alert-dismissible fade show mb-4 fluid-with-margins" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <div>
+            <strong>Fluid Layout with Margins:</strong> This version uses fluid layout with responsive margins for better readability while maintaining full-width behavior. 
+            <br><small class="text-muted">Margins increase on larger screens (2rem → 4rem → 6rem) to prevent content from stretching too wide.</small>
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
 
 <?php if ($success_message): ?>
     <div class="row fluid-with-margins">
@@ -205,6 +216,9 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                 </small>
             </div>
             <div class="d-flex gap-2">
+                <a href="memberlist_fixed.php" class="btn btn-outline-info">
+                    <i class="bi bi-layout-text-window-reverse"></i> View Fixed Layout
+                </a>
                 <a href="addmember.php" class="btn btn-primary">
                     <i class="bi bi-person-plus"></i> Add New Member
                 </a>
@@ -611,4 +625,4 @@ function closeModalAndRefresh() {
 // No need to initialize here to avoid conflicts
 </script>
 
-<?php include('../includes/footer.php'); ?> 
+<?php include('../includes/footer.php'); ?>

@@ -2,7 +2,38 @@
 include('../init.php');
 check_login();
 include('../includes/header.php');
+?>
 
+<style>
+/* Fluid Layout with Margins */
+.fluid-with-margins {
+    margin-left: 2rem;
+    margin-right: 2rem;
+}
+
+@media (min-width: 1400px) {
+    .fluid-with-margins {
+        margin-left: 4rem;
+        margin-right: 4rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .fluid-with-margins {
+        margin-left: 6rem;
+        margin-right: 6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .fluid-with-margins {
+        margin-left: 1rem;
+        margin-right: 1rem;
+    }
+}
+</style>
+
+<?php
 $height_from = '';
 $height_to = '';
 $age_from='';
@@ -61,8 +92,7 @@ if (count($_POST) > 1) {
 }
 ?>
 
-<div class="container-fluid">
-    <div class="row">
+<div class="row fluid-with-margins">
         <div class="col-12">
             <h2 class="text-center mb-4">Search Horoscope</h2>
             
@@ -326,7 +356,6 @@ if (count($_POST) > 1) {
                 </div>
             </div>
         </div>
-    </div>
 </div>
 
 <style>
