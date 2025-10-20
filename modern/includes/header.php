@@ -71,10 +71,34 @@
         }
         
         .card-header {
-            background: linear-gradient(135deg, #f8f9fc 0%, #e3e6f0 100%);
-            border-bottom: 1px solid #e3e6f0;
+            background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%);
+            color: #ffffff;
+            border-bottom: 1px solid #4c51bf;
             border-radius: 15px 15px 0 0 !important;
             font-weight: 600;
+            box-shadow: 0 2px 4px rgba(76, 81, 191, 0.1);
+        }
+        
+        .card-header .card-title {
+            color: #ffffff;
+            margin-bottom: 0;
+        }
+        
+        .card-header i {
+            color: #ffffff;
+        }
+        
+        .card-header a {
+            color: #ffffff;
+        }
+        
+        .card-header a:hover {
+            color: #e9ecef;
+        }
+        
+        .card-header:hover {
+            background: linear-gradient(135deg, #6366f1 0%, #5b21b6 100%);
+            transition: all 0.3s ease;
         }
         
         .stats-card {
@@ -143,10 +167,10 @@
         }
         
         .table thead th {
-            background: linear-gradient(135deg, #f8f9fc 0%, #e3e6f0 100%);
+            background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%);
             border: none;
             font-weight: 600;
-            color: #5a5c69;
+            color: #ffffff;
         }
         
 

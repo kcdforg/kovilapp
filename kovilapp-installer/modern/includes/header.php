@@ -71,10 +71,34 @@
         }
         
         .card-header {
-            background: linear-gradient(135deg, #f8f9fc 0%, #e3e6f0 100%);
-            border-bottom: 1px solid #e3e6f0;
+            background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%);
+            color: #ffffff;
+            border-bottom: 1px solid #4c51bf;
             border-radius: 15px 15px 0 0 !important;
             font-weight: 600;
+            box-shadow: 0 2px 4px rgba(76, 81, 191, 0.1);
+        }
+        
+        .card-header .card-title {
+            color: #ffffff;
+            margin-bottom: 0;
+        }
+        
+        .card-header i {
+            color: #ffffff;
+        }
+        
+        .card-header a {
+            color: #ffffff;
+        }
+        
+        .card-header a:hover {
+            color: #e9ecef;
+        }
+        
+        .card-header:hover {
+            background: linear-gradient(135deg, #6366f1 0%, #5b21b6 100%);
+            transition: all 0.3s ease;
         }
         
         .stats-card {
@@ -143,10 +167,10 @@
         }
         
         .table thead th {
-            background: linear-gradient(135deg, #f8f9fc 0%, #e3e6f0 100%);
+            background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%);
             border: none;
             font-weight: 600;
-            color: #5a5c69;
+            color: #ffffff;
         }
         
 
@@ -195,41 +219,15 @@
             background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
             border: none;
         }
-
-        /* Fixed Layout Specific Styles */
-        .fixed-layout-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 15px;
-        }
-        
-        .fixed-layout-notice {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            color: white;
-            padding: 8px 0;
-            text-align: center;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        
-        .fixed-layout-notice i {
-            margin-right: 5px;
-        }
     </style>
     
     <!-- jQuery (needed for some plugins) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <!-- Fixed Layout Notice -->
-    <div class="fixed-layout-notice">
-        <i class="bi bi-layout-text-window-reverse"></i>
-        Fixed Layout Mode - Testing Layout for Add Member Page
-    </div>
-
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
+        <div class="container-fluid">
             <a class="navbar-brand" href="dashboard.php">
                 <i class="bi bi-house-fill"></i> Kovil App
             </a>
@@ -288,5 +286,5 @@
         </div>
     </nav>
 
-    <!-- Main Content Container - Fixed Layout -->
-    <main class="container mt-4 flex-fill">
+    <!-- Main Content Container -->
+    <main class="container-fluid mt-4 flex-fill"> 

@@ -2,7 +2,7 @@
     
     <!-- Footer -->
     <footer class="mt-5 py-4" style="background: linear-gradient(135deg, #f8f9fc 0%, #e3e6f0 100%); border-top: 1px solid #e3e6f0;">
-        <div class="container">
+        <div class="container-fluid">
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <p class="mb-0 text-muted">
@@ -12,8 +12,8 @@
                 </div>
                 <div class="col-md-6 text-end">
                     <p class="mb-0 text-muted">
-                        <i class="bi bi-layout-text-window-reverse text-info"></i>
-                        Fixed Layout Mode - Modern Version
+                        <i class="bi bi-lightning-fill text-warning"></i>
+                        Modern Version - Built with Bootstrap 5
                     </p>
                 </div>
             </div>
@@ -98,4 +98,4 @@
         });
     </script>
 </body>
-</html>
+</html> 

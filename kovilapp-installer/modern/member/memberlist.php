@@ -10,26 +10,67 @@ $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] :
 if ($page < 1) $page = 1;
 $offset = ($page - 1) * $per_page;
 
-// Filtering (search, village, kattalai)
+// Filtering (search, village, kattalai, and table filters)
 $where = [];
 $params = [];
+$param_types = '';
+
+// Existing filters from search form
 if (!empty($_GET['search'])) {
-    $where[] = "name LIKE ?";
+    $where[] = "CONVERT(name USING utf8) COLLATE utf8_general_ci LIKE ?";
     $params[] = '%' . $_GET['search'] . '%';
+    $param_types .= 's';
 }
 if (!empty($_GET['village'])) {
-    $where[] = "village = ?";
+    $where[] = "CONVERT(village USING utf8) COLLATE utf8_general_ci = ?";
     $params[] = $_GET['village'];
+    $param_types .= 's';
 }
 if (!empty($_GET['kattalai'])) {
     $where[] = "kattalai = ?";
     $params[] = $_GET['kattalai'];
+    $param_types .= 'i';
+}
+
+// Table filter parameters
+if (!empty($_GET['filter_member_id'])) {
+    $where[] = "CONVERT(member_id USING utf8) COLLATE utf8_general_ci LIKE ?";
+    $params[] = '%' . $_GET['filter_member_id'] . '%';
+    $param_types .= 's';
+}
+if (!empty($_GET['filter_name'])) {
+    $where[] = "CONVERT(name USING utf8) COLLATE utf8_general_ci LIKE ?";
+    $params[] = '%' . $_GET['filter_name'] . '%';
+    $param_types .= 's';
+}
+if (!empty($_GET['filter_mobile'])) {
+    $where[] = "CONVERT(mobile_no USING utf8) COLLATE utf8_general_ci LIKE ?";
+    $params[] = '%' . $_GET['filter_mobile'] . '%';
+    $param_types .= 's';
+}
+if (!empty($_GET['filter_permanent_address'])) {
+    $where[] = "(CONVERT(village USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(taluk USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(district USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(state USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(pincode USING utf8) COLLATE utf8_general_ci LIKE ?)";
+    $search_term = '%' . $_GET['filter_permanent_address'] . '%';
+    $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term, $search_term]);
+    $param_types .= 'sssss';
+}
+if (!empty($_GET['filter_current_address'])) {
+    $where[] = "(CONVERT(c_village USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(c_taluk USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(c_district USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(c_state USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(c_pincode USING utf8) COLLATE utf8_general_ci LIKE ?)";
+    $search_term = '%' . $_GET['filter_current_address'] . '%';
+    $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term, $search_term]);
+    $param_types .= 'sssss';
+}
+if (!empty($_GET['filter_kattalai'])) {
+    // Filter by kattalai ID (now using ID directly)
+    $where[] = "kattalai = ?";
+    $params[] = $_GET['filter_kattalai'];
+    $param_types .= 'i';
 }
 $where_sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
 // Get total records for pagination
 $stmt = $con->prepare("SELECT COUNT(*) FROM $tbl_family $where_sql");
-if ($params) $stmt->bind_param(str_repeat('s', count($params)), ...$params);
+if ($params) $stmt->bind_param($param_types, ...$params);
 $stmt->execute();
 $stmt->bind_result($total_records);
 $stmt->fetch();
@@ -39,7 +80,7 @@ $stmt->close();
 $sql = "SELECT * FROM $tbl_family $where_sql ORDER BY id DESC LIMIT ? OFFSET ?";
 $stmt = $con->prepare($sql);
 if ($params) {
-    $types = str_repeat('s', count($params)) . 'ii';
+    $types = $param_types . 'ii';
     $bind_params = array_merge($params, [$per_page, $offset]);
     $stmt->bind_param($types, ...$bind_params);
 } else {
@@ -50,7 +91,7 @@ $result = $stmt->get_result();
 $families = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-include('../includes/header_fixed.php');
+include('../includes/header.php');
 
 // Handle success/error messages
 $success_message = '';
@@ -66,6 +107,33 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 ?>
 
 <style>
+/* Fluid Layout with Margins */
+.fluid-with-margins {
+    margin-left: 2rem;
+    margin-right: 2rem;
+}
+
+@media (min-width: 1400px) {
+    .fluid-with-margins {
+        margin-left: 4rem;
+        margin-right: 4rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .fluid-with-margins {
+        margin-left: 6rem;
+        margin-right: 6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .fluid-with-margins {
+        margin-left: 1rem;
+        margin-right: 1rem;
+    }
+}
+
 .member-avatar {
     width: 40px;
     height: 40px;
@@ -138,27 +206,163 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
     color: #fff !important;
 }
 
-.table thead th {
-    background: #e9ecef !important;
+/* Table Header Styling - Multiple selectors for maximum specificity */
+.table thead th,
+.table-responsive .table thead th,
+.card-body .table thead th,
+.card-body .table-responsive .table thead th {
+    background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%) !important;
     background-image: none !important;
-    color: #212529 !important;
+    background-color: #5a67d8 !important;
+    color: #ffffff !important;
+    border-color: #4c51bf !important;
+}
+
+/* Additional override for any Bootstrap defaults */
+.table > thead > tr > th {
+    background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%) !important;
+    background-image: none !important;
+    background-color: #5a67d8 !important;
+    color: #ffffff !important;
+    border-color: #4c51bf !important;
+}
+
+        /* DataTables specific overrides */
+        table.dataTable thead th,
+        table.dataTable.table-striped > thead > tr > th,
+        .dataTables_wrapper .table thead th {
+            background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%) !important;
+            background-image: none !important;
+            background-color: #5a67d8 !important;
+            color: #ffffff !important;
+            border-color: #4c51bf !important;
+        }
+
+        /* Column width controls - adjust individual columns by ID */
+        
+        /* Member ID column */
+        #col-member-id {
+            width: 100px !important;
+            max-width: 100px !important;
+            min-width: 100px !important;
+        }
+        
+        /* Name column */
+        #col-name,
+        .table td:nth-child(2) {
+            /* width: 200px !important; */
+            /* max-width: 200px !important; */
+            /* min-width: 200px !important; */
+        }
+        
+        /* Mobile column */
+        #col-mobile,
+        .table td:nth-child(3) {
+            /* width: 120px !important; */
+            /* max-width: 120px !important; */
+            /* min-width: 120px !important; */
+        }
+        
+        /* Permanent Address column */
+        #col-permanent-address,
+        .table td:nth-child(4) {
+            /* width: 250px !important; */
+            /* max-width: 250px !important; */
+            /* min-width: 250px !important; */
+        }
+        
+        /* Current Address column */
+        #col-current-address,
+        .table td:nth-child(5) {
+            /* width: 250px !important; */
+            /* max-width: 250px !important; */
+            /* min-width: 250px !important; */
+        }
+        
+        /* Kattalai column */
+        #col-kattalai,
+        .table td:nth-child(6) {
+            /* width: 120px !important; */
+            /* max-width: 120px !important; */
+            /* min-width: 120px !important; */
+        }
+        
+        /* Actions column */
+        #col-actions,
+        .table td:nth-child(7) {
+            /* width: 150px !important; */
+            /* max-width: 150px !important; */
+            /* min-width: 150px !important; */
+        }
+
+/* Filter Row Styling */
+.filter-row th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    padding: 8px !important;
+    border-color: #764ba2 !important;
+}
+
+.filter-row .form-control,
+.filter-row .form-select {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #333;
+    font-size: 0.875rem;
+}
+
+.filter-row .form-control:focus,
+.filter-row .form-select:focus {
+    background-color: #ffffff;
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.filter-row .form-control::placeholder {
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+.filter-row .btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Card Header Styling - Override to ensure it's applied */
+.card-header {
+    background: linear-gradient(135deg, #5a67d8 0%, #4c51bf 100%) !important;
+    color: #ffffff !important;
+    border-bottom: 1px solid #4c51bf !important;
+    border-radius: 15px 15px 0 0 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 4px rgba(76, 81, 191, 0.1) !important;
+}
+
+.card-header .card-title {
+    color: #ffffff !important;
+    margin-bottom: 0 !important;
+}
+
+.card-header i {
+    color: #ffffff !important;
+}
+
+.card-header a {
+    color: #ffffff !important;
+}
+
+.card-header a:hover {
+    color: #e9ecef !important;
+}
+
+.card-header:hover {
+    background: linear-gradient(135deg, #6366f1 0%, #5b21b6 100%) !important;
+    transition: all 0.3s ease !important;
 }
 </style>
 
-<!-- Layout Comparison Notice -->
-<div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
-    <div class="d-flex align-items-center">
-        <i class="bi bi-info-circle-fill me-2"></i>
-        <div>
-            <strong>Fixed Layout:</strong> This version uses a fixed-width layout (max-width: 1200px) for comparison with the default fluid layout. 
-            <br><small class="text-muted">Notice how the content is constrained to a readable width, especially on larger screens.</small>
-        </div>
-    </div>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
 
 <?php if ($success_message): ?>
-    <div class="row">
+    <div class="row fluid-with-margins">
         <div class="col-12">
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="bi bi-check-circle-fill"></i> <?php echo htmlspecialchars($success_message); ?>
@@ -169,7 +373,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 <?php endif; ?>
 
 <?php if ($error_message): ?>
-    <div class="row">
+    <div class="row fluid-with-margins">
         <div class="col-12">
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="bi bi-exclamation-triangle-fill"></i> <?php echo htmlspecialchars($error_message); ?>
@@ -179,19 +383,16 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
     </div>
 <?php endif; ?>
 
-<div class="row">
+<div class="row fluid-with-margins">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h3 mb-0">Member Management</h1>
                 <small class="text-muted">
-                    <i class="bi bi-layout-text-window-reverse"></i> Fixed Layout Mode
+                    <i class="bi bi-arrows-expand"></i> Fluid Layout with Responsive Margins
                 </small>
             </div>
             <div class="d-flex gap-2">
-                <a href="memberlist.php" class="btn btn-outline-warning">
-                    <i class="bi bi-arrows-expand"></i> View Fluid Layout
-                </a>
                 <a href="addmember.php" class="btn btn-primary">
                     <i class="bi bi-person-plus"></i> Add New Member
                 </a>
@@ -201,7 +402,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 </div>
 
 <!-- Search and Filter Section -->
-<div class="row mb-4">
+<!-- <div class="row mb-4 fluid-with-margins">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
@@ -255,10 +456,10 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
             </div>
         </div>
     </div>
-</div>
+</div> -->
 
 <!-- Members Table -->
-<div class="row">
+<div class="row fluid-with-margins">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
@@ -268,17 +469,79 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                 </h5>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
+                <form method="GET" id="tableFilterForm">
+                    <!-- Preserve existing search parameters -->
+                    <?php if (isset($_GET['search'])): ?>
+                        <input type="hidden" name="search" value="<?php echo htmlspecialchars($_GET['search']); ?>">
+                    <?php endif; ?>
+                    <?php if (isset($_GET['village'])): ?>
+                        <input type="hidden" name="village" value="<?php echo htmlspecialchars($_GET['village']); ?>">
+                    <?php endif; ?>
+                    <?php if (isset($_GET['kattalai'])): ?>
+                        <input type="hidden" name="kattalai" value="<?php echo htmlspecialchars($_GET['kattalai']); ?>">
+                    <?php endif; ?>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Member ID</th>
-                                <th>Name</th>
-                                <th>Mobile</th>
-                                <th>Permanent Address</th>
-                                <th>Current Address</th>
-                                <th>Kattalai</th>
-                                <th>Actions</th>
+                                <th id="col-member-id">Member ID</th>
+                                <th id="col-name">Name</th>
+                                <th id="col-mobile">Mobile</th>
+                                <th id="col-permanent-address">Permanent Address</th>
+                                <th id="col-current-address">Current Address</th>
+                                <th id="col-kattalai">Kattalai</th>
+                                <th id="col-actions">Actions</th>
+                            </tr>
+                            <!-- Filter Row -->
+                            <tr class="filter-row">
+                                <th>
+                                    <input type="text" class="form-control form-control-sm table-filter" 
+                                           name="filter_member_id" 
+                                           placeholder="Filter ID..." 
+                                           value="<?php echo isset($_GET['filter_member_id']) ? htmlspecialchars($_GET['filter_member_id']) : ''; ?>">
+                                </th>
+                                <th>
+                                    <input type="text" class="form-control form-control-sm table-filter" 
+                                           name="filter_name" 
+                                           placeholder="Filter Name..." 
+                                           value="<?php echo isset($_GET['filter_name']) ? htmlspecialchars($_GET['filter_name']) : ''; ?>">
+                                </th>
+                                <th>
+                                    <input type="text" class="form-control form-control-sm table-filter" 
+                                           name="filter_mobile" 
+                                           placeholder="Filter Mobile..." 
+                                           value="<?php echo isset($_GET['filter_mobile']) ? htmlspecialchars($_GET['filter_mobile']) : ''; ?>">
+                                </th>
+                                <th>
+                                    <input type="text" class="form-control form-control-sm table-filter" 
+                                           name="filter_permanent_address" 
+                                           placeholder="Filter Address..." 
+                                           value="<?php echo isset($_GET['filter_permanent_address']) ? htmlspecialchars($_GET['filter_permanent_address']) : ''; ?>">
+                                </th>
+                                <th>
+                                    <input type="text" class="form-control form-control-sm table-filter" 
+                                           name="filter_current_address" 
+                                           placeholder="Filter Address..." 
+                                           value="<?php echo isset($_GET['filter_current_address']) ? htmlspecialchars($_GET['filter_current_address']) : ''; ?>">
+                                </th>
+                                <th>
+                                    <select class="form-select form-select-sm table-filter" name="filter_kattalai">
+                                        <option value="">All Kattalai</option>
+                                        <?php
+                                        $kattalais = get_labels_by_type('kattalai');
+                                        foreach ($kattalais as $kattalai) {
+                                            $selected = (isset($_GET['filter_kattalai']) && $_GET['filter_kattalai'] == $kattalai['id']) ? 'selected' : '';
+                                            echo "<option value='{$kattalai['id']}' $selected>{$kattalai['display_name']}</option>";
+                                        }
+                                        ?>
+                                    </select>
+                                </th>
+                                <th>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearTableFilters">
+                                        <i class="bi bi-x-circle"></i> Clear
+                                    </button>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -433,7 +696,8 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                         </ul>
                     </nav>
                     <?php endif; ?>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -596,6 +860,95 @@ function closeModalAndRefresh() {
 
 // DataTable is initialized globally in footer.php
 // No need to initialize here to avoid conflicts
+
+// Table Filter Functionality with Form Submission
+document.addEventListener('DOMContentLoaded', function() {
+    const tableFilters = document.querySelectorAll('.table-filter');
+    const clearButton = document.getElementById('clearTableFilters');
+    const filterForm = document.getElementById('tableFilterForm');
+    let filterTimeout = null;
+    
+    // Function to submit the form (triggers page reload with new parameters)
+    function submitFilterForm() {
+        if (filterForm) {
+            filterForm.submit();
+        }
+    }
+    
+    // Function to clear table filters only (preserve main search filters)
+    function clearTableFilters() {
+        // Clear only table filter inputs
+        tableFilters.forEach(filter => {
+            filter.value = '';
+        });
+        
+        // Submit form to apply cleared filters
+        submitFilterForm();
+    }
+    
+    // Debounced form submission
+    function debouncedSubmit() {
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(submitFilterForm, 800); // 800ms delay for typing
+    }
+    
+    // Add event listeners to filter inputs
+    tableFilters.forEach(filter => {
+        // For text inputs, use debounced submission on input
+        if (filter.type === 'text') {
+            filter.addEventListener('input', debouncedSubmit);
+        }
+        
+        // For select dropdowns, submit immediately on change
+        if (filter.tagName === 'SELECT') {
+            filter.addEventListener('change', submitFilterForm);
+        }
+        
+        // Submit on Enter key
+        filter.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(filterTimeout); // Cancel debounced submission
+                submitFilterForm(); // Submit immediately
+            }
+        });
+    });
+    
+    // Add event listener to clear button
+    if (clearButton) {
+        clearButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            clearTableFilters();
+        });
+    }
+    
+    // Add keyboard shortcut (Ctrl+Shift+C to clear table filters)
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+            e.preventDefault();
+            clearTableFilters();
+        }
+    });
+    
+    // Show loading indicator when form is being submitted
+    if (filterForm) {
+        filterForm.addEventListener('submit', function() {
+            // Add a subtle loading indicator
+            const submitButton = document.createElement('div');
+            submitButton.className = 'position-fixed top-50 start-50 translate-middle';
+            submitButton.style.zIndex = '9999';
+            submitButton.innerHTML = `
+                <div class="bg-primary text-white px-3 py-2 rounded shadow">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <span>Filtering...</span>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(submitButton);
+        });
+    }
+});
 </script>
 
-<?php include('../includes/footer_fixed.php'); ?>
+<?php include('../includes/footer.php'); ?> 
