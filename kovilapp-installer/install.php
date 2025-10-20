@@ -92,11 +92,11 @@ class KovilAppInstaller {
         // Step 4: Database setup
         $this->setupDatabase();
         
-        // Step 5: Create configuration files
-        $this->createConfigFiles();
-        
-        // Step 6: Set up default data
+        // Step 5: Set up default data (move files first)
         $this->setupDefaultData();
+        
+        // Step 6: Create configuration files (after files are moved)
+        $this->createConfigFiles();
         
         // Step 7: Final checks
         $this->finalChecks();
@@ -238,11 +238,11 @@ class KovilAppInstaller {
             // Set charset
             $connection->set_charset('utf8mb4');
             
+            // Store database config for later use (before importing schema)
+            $this->db_config = $db_config;
+            
             // Import database schema
             $this->importDatabaseSchema($connection);
-            
-            // Store database config for later use
-            $this->db_config = $db_config;
             
             $connection->close();
             
@@ -299,19 +299,42 @@ class KovilAppInstaller {
             return;
         }
         
+        // Clean up SQL content - remove comments and split properly
+        $lines = explode("\n", $sql_content);
+        $clean_sql = '';
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            // Skip empty lines and comment lines
+            if (empty($line) || preg_match('/^--/', $line) || preg_match('/^\/\*/', $line) || preg_match('/^\*/', $line) || preg_match('/^#/', $line)) {
+                continue;
+            }
+            // Skip MySQL-specific directives
+            if (preg_match('/^\/\*!.*?\*\//', $line) || preg_match('/^SET /', $line) || preg_match('/^START TRANSACTION/', $line) || preg_match('/^COMMIT/', $line)) {
+                continue;
+            }
+            $clean_sql .= $line . "\n";
+        }
+        
         // Split by semicolon and execute each statement
-        $statements = array_filter(array_map('trim', explode(';', $sql_content)));
+        $statements = array_filter(array_map('trim', explode(';', $clean_sql)));
         
         $success_count = 0;
         $error_count = 0;
         
         foreach ($statements as $statement) {
-            if (!empty($statement) && !preg_match('/^--/', $statement)) {
-                if ($connection->query($statement)) {
-                    $success_count++;
-                } else {
-                    $error_count++;
-                    $this->warnings[] = "SQL Warning: " . $connection->error;
+            if (!empty($statement)) {
+                // Remove any remaining MySQL-specific comments
+                $statement = preg_replace('/\/\*.*?\*\//s', '', $statement);
+                $statement = trim($statement);
+                
+                if (!empty($statement)) {
+                    if ($connection->query($statement)) {
+                        $success_count++;
+                    } else {
+                        $error_count++;
+                        $this->warnings[] = "SQL Warning: " . $connection->error . " (Statement: " . substr($statement, 0, 100) . "...)";
+                    }
                 }
             }
         }
@@ -324,15 +347,42 @@ class KovilAppInstaller {
             $this->warnings[] = "Some SQL statements failed ({$error_count} errors)";
         }
         
-        // Create default admin user
-        $this->createDefaultUser($connection);
+        // Verify that critical tables were created
+        $critical_tables = ['users', 'family', 'child', 'labels'];
+        $missing_tables = [];
+        
+        foreach ($critical_tables as $table) {
+            $result = $connection->query("SHOW TABLES LIKE '{$table}'");
+            if (!$result || $result->num_rows == 0) {
+                $missing_tables[] = $table;
+            }
+        }
+        
+        if (empty($missing_tables)) {
+            $this->success_messages[] = "All critical tables verified successfully";
+            // Create default admin user
+            $this->createDefaultUser($connection);
+        } else {
+            $this->errors[] = "Missing tables after schema import: " . implode(', ', $missing_tables);
+            
+            // Show all existing tables for debugging
+            $result = $connection->query("SHOW TABLES");
+            $existing_tables = [];
+            if ($result) {
+                while ($row = $result->fetch_array()) {
+                    $existing_tables[] = $row[0];
+                }
+            }
+            $this->warnings[] = "Existing tables: " . (empty($existing_tables) ? 'None' : implode(', ', $existing_tables));
+        }
     }
     
     private function createDefaultUser($connection) {
-        // Create default admin user
+        // Create default admin user - match the actual users table schema
         $admin_password = password_hash('admin123', PASSWORD_DEFAULT);
-        $sql = "INSERT IGNORE INTO `users` (`username`, `password`, `email`, `full_name`, `role`, `status`) 
-                VALUES ('admin', '{$admin_password}', 'admin@kovilapp.com', 'System Administrator', 'admin', 'active')";
+        $creation_date = date('Y-m-d H:i:s');
+        $sql = "INSERT IGNORE INTO `users` (`username`, `password`, `email`, `role`, `profile_id`, `creation_date`, `created_by`, `u_image`, `mobile_no`) 
+                VALUES ('admin', '{$admin_password}', 'admin@kovilapp.com', 'admin', '1', '{$creation_date}', 'system', '', '')";
         
         if ($connection->query($sql)) {
             $this->success_messages[] = "Created default admin user (username: admin, password: admin123)";
@@ -404,37 +454,29 @@ $tbl_receipt_books = \'receipt_books\';
 $tbl_member_subscriptions = \'member_subscriptions\';
 $tbl_receipt_details = \'receipt_details\';
 
-// Dynamically determine the base path for assets
-$script_name = dirname($_SERVER[\'SCRIPT_NAME\']);
-$script_name = rtrim($script_name, \'/\\\\\');
+// Dynamically determine paths
+$document_root = $_SERVER[\'DOCUMENT_ROOT\'];
+$script_name = $_SERVER[\'SCRIPT_NAME\'];
+$request_uri = $_SERVER[\'REQUEST_URI\'];
 
-// Dynamically determine the protocol
+// Get the directory where this script is located relative to document root
+$script_dir = dirname($script_name);
+
+// Determine protocol
 $protocol = (!empty($_SERVER[\'HTTPS\']) && $_SERVER[\'HTTPS\'] !== \'off\') ? \'https\' : \'http\';
 
-// Base path for the application (now in web root)
-// Remove /kovilapp-installer from the path to get actual web root
-$installer_dir = basename(dirname(__FILE__));
-if (strpos($script_name, $installer_dir) !== false) {
-    $app_path = str_replace(\'/\' . $installer_dir, \'\', $script_name);
-} else {
-    $app_path = dirname($script_name);
-}
-$app_path = rtrim($app_path, \'/\');
-if (empty($app_path)) {
-    $app_path = \'\';
-}
+// Application base URL (should be root after installation)
+$path = $protocol . \'://\' . $_SERVER[\'SERVER_NAME\'];
 
-$path = $protocol . \'://\' . $_SERVER[\'SERVER_NAME\'] . $app_path;
+// Base directory for file operations (should be document root after installation)
+$base_dir = $document_root;
 
-// Base directory for file operations (web root, not installer directory)
-$base_dir = dirname(dirname(__FILE__));
-
-// Paths for application
-$current_path = $base_dir;
-$modern_path = $base_dir;
+// Paths for application (all point to document root after installation)
+$current_path = $document_root;
+$modern_path = $document_root;
 
 // Shared assets path
-$shared_assets = $base_dir;
+$shared_assets = $document_root;
 
 ?>';
     }
@@ -540,6 +582,11 @@ RewriteEngine On
                     mkdir($target, 0755, true);
                 }
             } else {
+                // Skip config.php - it will be generated separately with correct database settings
+                if (basename($target) === 'config.php') {
+                    continue;
+                }
+                
                 // Skip if file already exists and is newer
                 if (file_exists($target) && filemtime($target) >= filemtime($item)) {
                     continue;
@@ -608,10 +655,15 @@ RewriteEngine On
         }
         
         // Check if configuration is readable
-        if (is_readable($this->web_root . '/config.php')) {
-            $this->success_messages[] = "Configuration file is readable";
+        $config_path = $this->web_root . '/config.php';
+        if (file_exists($config_path)) {
+            if (is_readable($config_path)) {
+                $this->success_messages[] = "Configuration file is readable";
+            } else {
+                $this->errors[] = "Configuration file exists but is not readable (check permissions)";
+            }
         } else {
-            $this->errors[] = "Configuration file is not readable";
+            $this->errors[] = "Configuration file was not created";
         }
     }
     
@@ -737,6 +789,7 @@ if (php_sapi_name() !== 'cli' && isset($_GET['install'])) {
                                                 <i class="bi bi-database"></i> Database Name
                                             </label>
                                             <input type="text" class="form-control" id="db_name" name="db_name" value="kovil" required>
+                                            <small class="form-text text-muted">Use your actual database name (e.g., koil_kovilapp if that's what you created)</small>
                                         </div>
                                     </div>
                                 </div>

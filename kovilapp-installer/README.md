@@ -145,6 +145,16 @@ The installer will:
 - Ensure MySQL/MariaDB is running
 - Verify database user has proper privileges
 
+#### "Table 'database_name.users' doesn't exist"
+- Your database name might be different (e.g., `koil_kovilapp` instead of `kovil`)
+- Run `db_check.php` to diagnose and fix database issues
+- Use the correct database name during installation
+
+#### "Path/Redirection Issues"
+- Run `fix_config.php` to repair configuration paths
+- Ensure application files are in web root, not subfolder
+- Check that config.php has correct path settings
+
 #### "Directory not writable"
 ```bash
 chmod 777 images/
@@ -167,6 +177,11 @@ Increase PHP memory limit in `php.ini`:
 ```ini
 memory_limit = 512M
 ```
+
+### Diagnostic Tools:
+- **`db_check.php`**: Database connection and table verification tool
+- **`fix_config.php`**: Configuration path repair tool  
+- **`debug.php`**: PHP error display and environment information
 
 ### Installation Logs:
 - Check your web server error logs

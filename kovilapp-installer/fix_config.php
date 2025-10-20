@@ -132,25 +132,29 @@ $tbl_receipt_books = \'receipt_books\';
 $tbl_member_subscriptions = \'member_subscriptions\';
 $tbl_receipt_details = \'receipt_details\';
 
-// Dynamically determine the base path for assets
-$script_name = dirname($_SERVER[\'SCRIPT_NAME\']);
-$script_name = rtrim($script_name, \'/\\\\\');
+// Dynamically determine paths
+$document_root = $_SERVER[\'DOCUMENT_ROOT\'];
+$script_name = $_SERVER[\'SCRIPT_NAME\'];
+$request_uri = $_SERVER[\'REQUEST_URI\'];
 
-// Dynamically determine the protocol
+// Get the directory where this script is located relative to document root
+$script_dir = dirname($script_name);
+
+// Determine protocol
 $protocol = (!empty($_SERVER[\'HTTPS\']) && $_SERVER[\'HTTPS\'] !== \'off\') ? \'https\' : \'http\';
 
-// Base path for the application (web root)
-$path = $protocol . \'://\' . $_SERVER[\'SERVER_NAME\'] . $script_name;
+// Application base URL (should be root after installation)
+$path = $protocol . \'://\' . $_SERVER[\'SERVER_NAME\'];
 
-// Base directory for file operations
-$base_dir = dirname(__FILE__);
+// Base directory for file operations (should be document root after installation)
+$base_dir = $document_root;
 
-// Paths for application
-$current_path = $base_dir;
-$modern_path = $base_dir;
+// Paths for application (all point to document root after installation)
+$current_path = $document_root;
+$modern_path = $document_root;
 
 // Shared assets path
-$shared_assets = $base_dir;
+$shared_assets = $document_root;
 
 ?>';
 }
