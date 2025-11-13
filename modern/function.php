@@ -257,7 +257,7 @@ function add_child($child) {
         $c_lastmodified_date = date('Y-m-d');
 
         $sql = "INSERT INTO `$tbl_child`(`fam_id`, `father_id`, `c_name`, `c_dob`, `c_gender`, `c_blood_group`, `c_marital_status`,`c_qualification`, `c_mobile_no`, `c_email`, `c_occupation`, `c_education_details`, `c_occupation_details`, `c_image`, `c_created_date`, `c_created_by`, `c_lastmodified_by`, `c_lastmodified_date`) 
-					VALUES (0, '$father_id', '$c_name', '$c_dob', '$c_gender', '$c_blood_group', '$c_marital_status', '$c_qualification', '$c_mobile_no', '$c_email', '$c_occupation', '$c_education_details', '$c_occupation_details', '$c_image', '$c_created_date', '$c_created_by', '$c_lastmodified_by', '$c_lastmodified_Fixe
+					VALUES (0, '$father_id', '$c_name', '$c_dob', '$c_gender', '$c_blood_group', '$c_marital_status', '$c_qualification', '$c_mobile_no', '$c_email', '$c_occupation', '$c_education_details', '$c_occupation_details', '$c_image', '$c_created_date', '$c_created_by', '$c_lastmodified_by', '$c_lastmodified_date')";
         return mysqli_query($con, $sql);
     }
 }
