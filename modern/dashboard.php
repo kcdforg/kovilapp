@@ -209,9 +209,9 @@ include('includes/header.php');
                             $recent_members = get_families("ORDER BY id DESC LIMIT 5");
                             foreach ($recent_members as $member) {
                                 echo "<tr>";
-                                echo "<td>" . htmlspecialchars($member['name']) . "</td>";
-                                echo "<td>" . htmlspecialchars($member['village']) . "</td>";
-                                echo "<td>" . htmlspecialchars($member['mobile_no']) . "</td>";
+                                echo "<td>" . htmlspecialchars($member['name'] ?? '') . "</td>";
+                                echo "<td>" . htmlspecialchars($member['village'] ?? '') . "</td>";
+                                echo "<td>" . htmlspecialchars($member['mobile_no'] ?? '') . "</td>";
                                 echo "<td>";
                                 echo "<a href='member/viewmember.php?id=" . $member['id'] . "' class='btn btn-sm btn-outline-primary me-1' data-bs-toggle='tooltip' title='View'>";
                                 echo "<i class='bi bi-eye'></i>";

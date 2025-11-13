@@ -47,10 +47,10 @@ if (count($_POST) && $_POST['c_name'] != '')
                 <br>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label for="inputEmail3" class="col-sm-4 control-label">Name</label>
+                        <label for="inputEmail3" class="col-sm-4 control-label">Name <span class="text-danger">*</span></label>
 
                         <div class="col-sm-7">
-                            <input type="text" class="form-control" id="inputusername3" name="c_name" placeholder="Children Name">
+                            <input type="text" class="form-control" id="inputusername3" name="c_name" placeholder="Children Name" required>
                         </div>
                     </div>
 

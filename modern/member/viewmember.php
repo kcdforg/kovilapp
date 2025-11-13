@@ -12,6 +12,36 @@ if (isset($_POST['action'])) {
     if ($_POST['action'] == 'generate_id') {
         $member_id = isset($_POST['id']) ? $_POST['id'] : $id;
         generate_member_id($member_id);
+        header("Location: viewmember.php?id=$id");
+        exit();
+    } elseif ($_POST['action'] == 'update_member_id') {
+        $member_id_value = $_POST['member_id_value'] ?? '';
+        $member_record_id = $_POST['member_record_id'] ?? $id;
+        
+        if (!empty($member_id_value)) {
+            // Check if member_id already exists
+            $check_sql = "SELECT id FROM $tbl_family WHERE member_id = ? AND id != ?";
+            $check_stmt = mysqli_prepare($con, $check_sql);
+            mysqli_stmt_bind_param($check_stmt, "si", $member_id_value, $member_record_id);
+            mysqli_stmt_execute($check_stmt);
+            mysqli_stmt_store_result($check_stmt);
+            
+            if (mysqli_stmt_num_rows($check_stmt) > 0) {
+                mysqli_stmt_close($check_stmt);
+                header("Location: viewmember.php?id=$id&error=duplicate_id");
+                exit();
+            }
+            mysqli_stmt_close($check_stmt);
+            
+            // Update member_id if unique
+            $sql = "UPDATE $tbl_family SET member_id = ? WHERE id = ?";
+            $stmt = mysqli_prepare($con, $sql);
+            mysqli_stmt_bind_param($stmt, "si", $member_id_value, $member_record_id);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+        header("Location: viewmember.php?id=$id");
+        exit();
     }
 }
 
@@ -188,11 +218,44 @@ include('../includes/header.php');
         margin-top: 15px;
     }
 }
+
+/* Fluid Layout with Margins */
+.fluid-with-margins {
+    margin-left: 2rem;
+    margin-right: 2rem;
+}
+
+@media (min-width: 1400px) {
+    .fluid-with-margins {
+        margin-left: 4rem;
+        margin-right: 4rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .fluid-with-margins {
+        margin-left: 6rem;
+        margin-right: 6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .fluid-with-margins {
+        margin-left: 1rem;
+        margin-right: 1rem;
+    }
+}
 </style>
 
-<div class="container-fluid mt-4">
-    <div class="row">
+<div class="row fluid-with-margins">
         <div class="col-12">
+        <?php if (isset($_GET['error']) && $_GET['error'] == 'duplicate_id'): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle"></i> This Member ID already exists. Please enter a unique Member ID.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+        
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center main-card-header">
                     <h4 class="mb-0 family-name">
@@ -220,11 +283,13 @@ include('../includes/header.php');
                                 <i class="bi bi-person"></i> Profile
                             </a>
                         </li>
+                        <?php /* Horoscope tab hidden - to be enabled later
                         <li class="nav-item" role="presentation">
                             <a class="nav-link <?php echo $horoscope_active; ?>" href="?id=<?php echo $id; ?>&tab=horoscope">
                                 <i class="bi bi-stars"></i> Horoscope
                             </a>
                         </li>
+                        */ ?>
                     </ul>
                     
                     <div class="tab-content mt-4" id="memberTabsContent">
@@ -233,15 +298,20 @@ include('../includes/header.php');
                                 <!-- Left Column - Family Members -->
                                 <div class="col-lg-7">
                                     <!-- Husband Section -->
-                                    <div class="card">
+                                    <div class="card" id="husband-section">
                                         <div class="card-header">
                                             <h6 class="mb-0"><i class="bi bi-person"></i> குடும்ப தலைவர்</h6>
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-md-3 text-center">
+                                                <div class="col-md-3 text-center" id="husband-image-container">
                                                     <?php if ($row['image'] && file_exists("../images/member/" . $row['image'])): ?>
                                                         <img src="../images/member/<?php echo htmlspecialchars($row['image']); ?>" class="member-avatar" alt="Husband Photo">
+                                                        <div class="mt-2">
+                                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteHusbandImageModal">
+                                                                <i class="bi bi-trash"></i> Delete
+                                                            </button>
+                                                        </div>
                                                     <?php else: ?>
                                                         <div class="member-avatar-placeholder">
                                                             <div>
@@ -249,15 +319,12 @@ include('../includes/header.php');
                                                                 No Photo
                                                             </div>
                                                         </div>
-                                                    <?php endif; ?>
                                                     <div class="mt-2">
                                                         <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadHusbandImageModal">
-                                                            <i class="bi bi-upload"></i> Upload
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteHusbandImageModal">
-                                                            <i class="bi bi-trash"></i> Delete
+                                                                <i class="bi bi-upload"></i> Upload Photo
                                                         </button>
                                                     </div>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <div class="col-md-9">
                                                     <div class="data-item">
@@ -308,9 +375,14 @@ include('../includes/header.php');
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-md-3 text-center">
+                                                <div class="col-md-3 text-center" id="wife-image-container">
                                                     <?php if ($row['w_image'] && file_exists("../images/member/" . $row['w_image'])): ?>
                                                         <img src="../images/member/<?php echo htmlspecialchars($row['w_image']); ?>" class="member-avatar" alt="Wife Photo">
+                                                        <div class="mt-2">
+                                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteWifeImageModal">
+                                                                <i class="bi bi-trash"></i> Delete
+                                                            </button>
+                                                        </div>
                                                     <?php else: ?>
                                                         <div class="member-avatar-placeholder">
                                                             <div>
@@ -318,15 +390,12 @@ include('../includes/header.php');
                                                                 No Photo
                                                             </div>
                                                         </div>
-                                                    <?php endif; ?>
                                                     <div class="mt-2">
                                                         <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadWifeImageModal">
-                                                            <i class="bi bi-upload"></i> Upload
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteWifeImageModal">
-                                                            <i class="bi bi-trash"></i> Delete
+                                                                <i class="bi bi-upload"></i> Upload Photo
                                                         </button>
                                                     </div>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <div class="col-md-9">
                                                     <div class="data-item">
@@ -372,18 +441,13 @@ include('../includes/header.php');
                                             <h6 class="mb-0">
                                                 <i class="bi bi-people-fill"></i> குழந்தைகள் (<?php echo $num_rows; ?>)
                                             </h6>
-                                            <div class="dropdown">
-                                                <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-gear"></i> Actions
+                                            <div>
+                                                <button class="btn btn-success btn-sm me-2" onclick="addson()">
+                                                    <i class="bi bi-person-plus"></i> Add Son
                                                 </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="javascript:void(0);" onclick="addson(); return false;">
-                                                        <i class="bi bi-person-plus"></i> Add Son
-                                                    </a></li>
-                                                    <li><a class="dropdown-item" href="javascript:void(0);" onclick="adddaughter(); return false;">
-                                                        <i class="bi bi-person-plus"></i> Add Daughter
-                                                    </a></li>
-                                                </ul>
+                                                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addDaughterModal">
+                                                    <i class="bi bi-person-plus"></i> Add Daughter
+                                                </button>
                                             </div>
                                         </div>
                                         <div class="card-body">
@@ -396,16 +460,21 @@ include('../includes/header.php');
                                                                 <button class="btn btn-sm btn-outline-primary" onclick="cupdate(<?php echo $v['id']; ?>)">
                                                                     <i class="bi bi-pencil"></i> Edit
                                                                 </button>
-                                                                <button class="btn btn-sm btn-outline-danger" onclick="childdelete(<?php echo $v['id']; ?>)">
+                                                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteChildModal" data-child-id="<?php echo $v['id']; ?>" data-child-name="<?php echo htmlspecialchars($v['c_name']); ?>">
                                                                     <i class="bi bi-trash"></i> Delete
                                                                 </button>
                                                             </div>
                                                         </div>
                                                         <div class="p-3">
                                                             <div class="row">
-                                                                <div class="col-md-3 text-center">
+                                                                <div class="col-md-3 text-center" id="child-image-container-<?php echo $v['id']; ?>">
                                                                     <?php if ($v['c_image'] && file_exists("../images/member/" . $v['c_image'])): ?>
                                                                         <img src="../images/member/<?php echo htmlspecialchars($v['c_image']); ?>" class="member-avatar" alt="Child Photo">
+                                                                        <div class="mt-2">
+                                                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteChildImageModal" data-child-id="<?php echo $v['id']; ?>" data-child-image="<?php echo $v['c_image']; ?>">
+                                                                                <i class="bi bi-trash"></i> Delete
+                                                                            </button>
+                                                                        </div>
                                                                     <?php else: ?>
                                                                         <div class="member-avatar-placeholder">
                                                                             <div>
@@ -413,15 +482,12 @@ include('../includes/header.php');
                                                                                 No Photo
                                                                             </div>
                                                                         </div>
-                                                                    <?php endif; ?>
                                                                     <div class="mt-2">
-                                                                        <button class="btn btn-sm btn-outline-primary" onclick="addchildphoto(<?php echo $v['id']; ?>, <?php echo $v['father_id']; ?>)">
-                                                                            <i class="bi bi-upload"></i> Upload
-                                                                        </button>
-                                                                        <button class="btn btn-sm btn-outline-danger" onclick="cimagedelete(<?php echo $v['id']; ?>, '<?php echo $v['c_image']; ?>')">
-                                                                            <i class="bi bi-trash"></i> Delete
+                                                                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadChildImageModal" data-child-id="<?php echo $v['id']; ?>" data-father-id="<?php echo $v['father_id']; ?>">
+                                                                                <i class="bi bi-upload"></i> Upload Photo
                                                                         </button>
                                                                     </div>
+                                                                    <?php endif; ?>
                                                                 </div>
                                                                 <div class="col-md-9">
                                                                     <div class="data-item">
@@ -449,7 +515,7 @@ include('../includes/header.php');
                                                                         <div class="data-value">
                                                                             <?php echo htmlspecialchars($v['c_marital_status'] ?? '-'); ?>
                                                                             <?php if ($v['c_gender'] == 'male' || $v['c_gender'] == 'Male'): ?>
-                                                                                <?php if ($v['fam_id'] == "0"): ?>
+                                                                                <?php if (empty($v['fam_id']) || $v['fam_id'] == "0" || $v['fam_id'] == 0): ?>
                                                                                     <button class="btn btn-sm btn-outline-primary ms-2" onclick="linkfamily(<?php echo $v['id']; ?>)">
                                                                                         <i class="bi bi-link"></i> Link Family
                                                                                     </button>
@@ -458,10 +524,22 @@ include('../includes/header.php');
                                                                                             <i class="bi bi-plus"></i> Add Family
                                                                                         </a>
                                                                                     <?php endif; ?>
-                                                                                <?php else: ?>
+                                                                                <?php elseif (!empty($v['fam_id']) && $v['fam_id'] != "0" && $v['fam_id'] != 0): ?>
+                                                                                    <?php
+                                                                                    // Check if family exists in family table
+                                                                                    $check_fam_sql = "SELECT id FROM $tbl_family WHERE id = ? AND deleted = 0";
+                                                                                    $check_fam_stmt = mysqli_prepare($con, $check_fam_sql);
+                                                                                    mysqli_stmt_bind_param($check_fam_stmt, "i", $v['fam_id']);
+                                                                                    mysqli_stmt_execute($check_fam_stmt);
+                                                                                    mysqli_stmt_store_result($check_fam_stmt);
+                                                                                    $family_exists = mysqli_stmt_num_rows($check_fam_stmt) > 0;
+                                                                                    mysqli_stmt_close($check_fam_stmt);
+                                                                                    ?>
+                                                                                    <?php if ($family_exists): ?>
                                                                                     <a href="viewmember.php?id=<?php echo $v['fam_id']; ?>" class="btn btn-sm btn-outline-info ms-2">
                                                                                         <i class="bi bi-eye"></i> View Family
                                                                                     </a>
+                                                                                    <?php endif; ?>
                                                                                 <?php endif; ?>
                                                                             <?php endif; ?>
                                                                         </div>
@@ -489,27 +567,70 @@ include('../includes/header.php');
                                             <h6 class="mb-0"><i class="bi bi-card-text"></i> Membership</h6>
                                         </div>
                                         <div class="card-body">
-                                            <div class="data-item">
+                                            <?php if (empty($row['member_id']) || $row['member_id'] == '0'): ?>
+                                                <!-- No Member ID - Show input form -->
+                                                <div class="data-item align-items-center mb-3">
                                                 <div class="data-label">Member ID:</div>
-                                                <div class="data-value member-id"><?php echo htmlspecialchars($row['member_id'] ?? '-'); ?></div>
+                                                    <div style="width: 50%;">
+                                                        <form method="POST" id="memberIdForm">
+                                                            <input type="hidden" name="action" value="update_member_id">
+                                                            <input type="hidden" name="member_record_id" value="<?php echo $id; ?>">
+                                                            <div class="input-group input-group-sm">
+                                                                <input type="text" class="form-control" name="member_id_value" 
+                                                                       id="memberIdInput" placeholder="Enter Member ID" required>
+                                                                <button type="submit" class="btn btn-success">
+                                                                    <i class="bi bi-save"></i> Save
+                                                                </button>
                                             </div>
-                                            <div class="data-item">
-                                                <?php if (empty($row['member_id']) || $row['member_id'] == '0'): ?>
-                                                    <form method="POST" class="d-flex justify-content-end">
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                                <div class="text-center mb-2">
+                                                    <small class="text-muted">Enter a unique Member ID or use Auto Generate below</small>
+                                                </div>
+                                                <div class="d-flex justify-content-center gap-2">
+                                                    <form method="POST">
                                                         <input type="hidden" name="action" value="generate_id">
                                                         <input type="hidden" name="id" value="<?php echo $id; ?>">
-                                                        <button type="submit" class="btn btn-primary">
-                                                            <i class="bi bi-plus-circle"></i> Generate ID
+                                                        <button type="submit" class="btn btn-primary btn-sm">
+                                                            <i class="bi bi-plus-circle"></i> Auto Generate ID
                                                         </button>
                                                     </form>
+                                                </div>
                                                 <?php else: ?>
-                                                    <div class="d-flex justify-content-end">
-                                                        <button class="btn btn-outline-primary" onclick="printid()">
+                                                <!-- Member ID exists - Show with edit option -->
+                                                <div class="data-item">
+                                                    <div class="data-label">Member ID:</div>
+                                                    <div class="data-value member-id" id="memberIdDisplay">
+                                                        <?php echo htmlspecialchars($row['member_id']); ?>
+                                                    </div>
+                                                    <div id="memberIdEdit" style="display: none; flex: 1;">
+                                                        <form method="POST" class="d-flex gap-2">
+                                                            <input type="hidden" name="action" value="update_member_id">
+                                                            <input type="hidden" name="member_record_id" value="<?php echo $id; ?>">
+                                                            <input type="text" class="form-control form-control-sm" name="member_id_value" 
+                                                                   value="<?php echo htmlspecialchars($row['member_id']); ?>" 
+                                                                   placeholder="Enter Member ID" required>
+                                                            <button type="submit" class="btn btn-sm btn-success">
+                                                                <i class="bi bi-check"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-secondary" onclick="cancelEditMemberId()">
+                                                                <i class="bi bi-x"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-secondary ms-2" onclick="editMemberId()">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="data-item">
+                                                    <div class="d-flex gap-2">
+                                                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#printIdModal">
                                                             <i class="bi bi-printer"></i> Print ID Card
                                                         </button>
                                                     </div>
+                                                    </div>
                                                 <?php endif; ?>
-                                            </div>
                                         </div>
                                     </div>
 
@@ -525,7 +646,15 @@ include('../includes/header.php');
                                             </div>
                                             <div class="data-item">
                                                 <div class="data-label">Current Address:</div>
-                                                <div class="data-value"><?php echo htmlspecialchars($row['current_address'] ?? '-'); ?></div>
+                                                <div class="data-value">
+                                                    <?php 
+                                                    if (isset($row['same_as_permanent']) && $row['same_as_permanent'] == 1) {
+                                                        echo '<span class="badge bg-info text-dark">Same as Permanent</span>';
+                                                    } else {
+                                                        echo htmlspecialchars($row['current_address'] ?? '-');
+                                                    }
+                                                    ?>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -599,8 +728,7 @@ include('../includes/header.php');
 </div>
 
 <!-- Action Buttons at Bottom -->
-<div class="container-fluid mt-4">
-    <div class="row">
+<div class="row fluid-with-margins">
         <div class="col-12">
             <div class="card">
                 <div class="card-body text-center">
@@ -614,15 +742,11 @@ include('../includes/header.php');
                         </button>
                     <?php endif; ?>
                     
-                    <button class="btn btn-success me-2" onclick="addson(); console.log('Add Son button clicked')">
-                        <i class="bi bi-person-plus"></i> Add Son
-                    </button>
-                    <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#addDaughterModal">
-                        <i class="bi bi-person-plus"></i> Add Daughter
-                    </button>
+                    <?php /* Add Horoscope button hidden - to be enabled later
                     <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#addHoroscopeModal">
                         <i class="bi bi-stars"></i> Add Horoscope
                     </button>
+                    */ ?>
                 </div>
             </div>
         </div>
@@ -639,72 +763,109 @@ include('../includes/header.php');
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <?php
-                $upload_dir = "../images/member/";
-                $msg = '';
-                
-                if (isset($_FILES["h_image"])) {
-                    if ($_FILES["h_image"]["error"] > 0) {
-                        $msg = "Error: " . $_FILES["h_image"]["error"];
-                    } else {
-                        if ($_FILES["h_image"]["type"] != 'image/jpeg') {
-                            $msg = "Image should be in JPEG format";
-                        } else {
-                            $s = $id . "_husband.jpg";
-                            
-                            if (file_exists("../images/member/" . $s)) {
-                                unlink("../images/member/" . $s);
-                            }
-                            
-                            move_uploaded_file($_FILES["h_image"]["tmp_name"], "../images/member/" . $s);
-                            chmod("../images/member/" . $s, 0664);
-
-                            $sql = "UPDATE `$tbl_family` SET `image`=? WHERE `id`=?";
-                            $stmt = mysqli_prepare($con, $sql);
-                            mysqli_stmt_bind_param($stmt, "si", $s, $id);
-                            
-                            if (mysqli_stmt_execute($stmt)) {
-                                $msg = "Successfully uploaded!";
-                            } else {
-                                $msg = "Error: " . mysqli_error($con);
-                            }
-                            mysqli_stmt_close($stmt);
-                        }
-                    }
-                }
-                ?>
-                
-                <?php if ($msg): ?>
-                    <div class="alert alert-<?php echo strpos($msg, 'Error') !== false ? 'danger' : 'success'; ?> alert-dismissible fade show" role="alert">
-                        <i class="bi bi-<?php echo strpos($msg, 'Error') !== false ? 'exclamation-triangle' : 'check-circle'; ?>"></i> <?php echo $msg; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                <?php endif; ?>
-                
-                <?php if (!(is_dir($upload_dir) && is_writable($upload_dir))): ?>
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Upload directory is not writable, or does not exist.
-                    </div>
-                <?php else: ?>
-                    <form action="" method="post" enctype="multipart/form-data">
+            <div class="modal-body" id="uploadHusbandImageBody">
+                <form id="uploadHusbandImageForm" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label for="h_image" class="form-label">Select husband image:</label>
-                            <input type="file" class="form-control" name="h_image" id="h_image" accept="image/jpeg" required>
-                            <div class="form-text">Only JPEG images are allowed.</div>
+                        <input type="file" class="form-control" name="h_image" id="h_image" accept="image/jpeg,image/jpg,image/png" required>
+                        <div class="form-text">JPEG, JPG or PNG images are allowed.</div>
                         </div>
-                        <div class="d-flex gap-2">
+                </form>
+            </div>
+            <div class="modal-footer" id="uploadHusbandImageFooter">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" name="submit" class="btn btn-primary">
+                <button type="button" class="btn btn-primary" id="uploadHusbandImageBtn">
                                 <i class="bi bi-upload"></i> Upload
                             </button>
                         </div>
-                    </form>
-                <?php endif; ?>
             </div>
         </div>
     </div>
-</div>
+
+<script>
+document.getElementById('uploadHusbandImageBtn')?.addEventListener('click', function() {
+    const form = document.getElementById('uploadHusbandImageForm');
+    const fileInput = document.getElementById('h_image');
+    const btn = this;
+    const modalBody = document.getElementById('uploadHusbandImageBody');
+    const modalFooter = document.getElementById('uploadHusbandImageFooter');
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    // Show loading state
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+    btn.disabled = true;
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('h_image', fileInput.files[0]);
+    formData.append('id', '<?php echo $row['id']; ?>');
+    
+    // Make AJAX request
+    fetch('hupload.php?id=<?php echo $row['id']; ?>', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-success">Success!</h5>
+                    <p class="mb-0">${data.message}</p>
+                    </div>
+            `;
+            
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="closeUploadHusbandModal">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            `;
+            
+            // Update the husband image in the DOM
+            document.getElementById('closeUploadHusbandModal').addEventListener('click', function() {
+                const husbandImageContainer = document.getElementById('husband-image-container');
+                if (husbandImageContainer && data.filename) {
+                    // Store the new filename for delete functionality
+                    window.currentHusbandImage = data.filename;
+                    
+                    husbandImageContainer.innerHTML = `
+                        <img src="../images/member/${data.filename}?t=${new Date().getTime()}" class="member-avatar" alt="Husband Photo">
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteHusbandImageModal">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+        } else {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+            </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            `;
+        }
+    })
+    .catch(error => {
+        // Show error message
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error uploading photo: ${error.message}
+        </div>
+        `;
+        btn.innerHTML = '<i class="bi bi-upload"></i> Upload';
+        btn.disabled = false;
+    });
+});
+</script>
 
 <!-- Delete Husband Image Modal -->
 <div class="modal fade" id="deleteHusbandImageModal" tabindex="-1" aria-labelledby="deleteHusbandImageModalLabel" aria-hidden="true">
@@ -716,26 +877,112 @@ include('../includes/header.php');
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" id="deleteHusbandImageBody">
                 <p>Are you sure you want to delete the husband's photo?</p>
                 <p class="text-danger mb-0">
                     <i class="bi bi-exclamation-circle"></i> 
                     This action cannot be undone.
                 </p>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" id="deleteHusbandImageFooter">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="himagedelete.php" method="POST" style="display: inline;">
-                    <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
-                    <input type="hidden" name="h_image" value="<?php echo $row['image']; ?>">
-                    <button type="submit" class="btn btn-danger">
+                <button type="button" class="btn btn-danger" id="confirmDeleteHusbandImage">
                         <i class="bi bi-trash"></i> Delete Photo
                     </button>
-                </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Initialize current image filename
+window.currentHusbandImage = '<?php echo $row['image']; ?>';
+
+document.getElementById('confirmDeleteHusbandImage')?.addEventListener('click', function() {
+    const btn = this;
+    const modalBody = document.getElementById('deleteHusbandImageBody');
+    const modalFooter = document.getElementById('deleteHusbandImageFooter');
+    
+    // Show loading state
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+    btn.disabled = true;
+    
+    // Use the current image filename (updated after upload)
+    const imageFilename = window.currentHusbandImage || '<?php echo $row['image']; ?>';
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('image', imageFilename);
+    formData.append('id', '<?php echo $row['id']; ?>');
+    
+    // Make AJAX request
+    fetch('hdelete.php?id=<?php echo $row['id']; ?>&h_image=' + encodeURIComponent(imageFilename), {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-success">Success!</h5>
+                    <p class="mb-0">${data.message}</p>
+                </div>
+            `;
+            
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="closeDeleteHusbandModal">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            `;
+            
+            // Update the husband image in the DOM to show placeholder
+            document.getElementById('closeDeleteHusbandModal').addEventListener('click', function() {
+                const husbandImageContainer = document.getElementById('husband-image-container');
+                if (husbandImageContainer) {
+                    // Clear the current image filename
+                    window.currentHusbandImage = '';
+                    
+                    husbandImageContainer.innerHTML = `
+                        <div class="member-avatar-placeholder">
+                            <div>
+                                <i class="bi bi-person" style="font-size: 24px;"></i><br>
+                                No Photo
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadHusbandImageModal">
+                                <i class="bi bi-upload"></i> Upload Photo
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+        } else {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+                </div>
+            `;
+            btn.innerHTML = '<i class="bi bi-trash"></i> Delete Photo';
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        // Show error message
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error deleting photo: ${error.message}
+            </div>
+        `;
+        btn.innerHTML = '<i class="bi bi-trash"></i> Delete Photo';
+        btn.disabled = false;
+    });
+});
+</script>
 
 <!-- Upload Wife Image Modal -->
 <div class="modal fade" id="uploadWifeImageModal" tabindex="-1" aria-labelledby="uploadWifeImageModalLabel" aria-hidden="true">
@@ -747,72 +994,109 @@ include('../includes/header.php');
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <?php
-                $upload_dir = "../images/member/";
-                $msg = '';
-                
-                if (isset($_FILES["w_image"])) {
-                    if ($_FILES["w_image"]["error"] > 0) {
-                        $msg = "Error: " . $_FILES["w_image"]["error"];
-                    } else {
-                        if ($_FILES["w_image"]["type"] != 'image/jpeg') {
-                            $msg = "Image should be in JPEG format";
-                        } else {
-                            $s = $id . "_wife.jpg";
-                            
-                            if (file_exists("../images/member/" . $s)) {
-                                unlink("../images/member/" . $s);
-                            }
-                            
-                            move_uploaded_file($_FILES["w_image"]["tmp_name"], "../images/member/" . $s);
-                            chmod("../images/member/" . $s, 0664);
-
-                            $sql = "UPDATE `$tbl_family` SET `w_image`=? WHERE `id`=?";
-                            $stmt = mysqli_prepare($con, $sql);
-                            mysqli_stmt_bind_param($stmt, "si", $s, $id);
-                            
-                            if (mysqli_stmt_execute($stmt)) {
-                                $msg = "Successfully uploaded!";
-                            } else {
-                                $msg = "Error: " . mysqli_error($con);
-                            }
-                            mysqli_stmt_close($stmt);
-                        }
-                    }
-                }
-                ?>
-                
-                <?php if ($msg): ?>
-                    <div class="alert alert-<?php echo strpos($msg, 'Error') !== false ? 'danger' : 'success'; ?> alert-dismissible fade show" role="alert">
-                        <i class="bi bi-<?php echo strpos($msg, 'Error') !== false ? 'exclamation-triangle' : 'check-circle'; ?>"></i> <?php echo $msg; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                <?php endif; ?>
-                
-                <?php if (!(is_dir($upload_dir) && is_writable($upload_dir))): ?>
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Upload directory is not writable, or does not exist.
-                    </div>
-                <?php else: ?>
-                    <form action="" method="post" enctype="multipart/form-data">
+            <div class="modal-body" id="uploadWifeImageBody">
+                <form id="uploadWifeImageForm" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label for="w_image" class="form-label">Select wife image:</label>
-                            <input type="file" class="form-control" name="w_image" id="w_image" accept="image/jpeg" required>
-                            <div class="form-text">Only JPEG images are allowed.</div>
+                        <input type="file" class="form-control" name="w_image" id="w_image" accept="image/jpeg,image/jpg,image/png" required>
+                        <div class="form-text">JPEG, JPG or PNG images are allowed.</div>
                         </div>
-                        <div class="d-flex gap-2">
+                </form>
+            </div>
+            <div class="modal-footer" id="uploadWifeImageFooter">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" name="submit" class="btn btn-primary">
+                <button type="button" class="btn btn-primary" id="uploadWifeImageBtn">
                                 <i class="bi bi-upload"></i> Upload
                             </button>
                         </div>
-                    </form>
-                <?php endif; ?>
             </div>
         </div>
     </div>
-</div>
+
+<script>
+document.getElementById('uploadWifeImageBtn')?.addEventListener('click', function() {
+    const form = document.getElementById('uploadWifeImageForm');
+    const fileInput = document.getElementById('w_image');
+    const btn = this;
+    const modalBody = document.getElementById('uploadWifeImageBody');
+    const modalFooter = document.getElementById('uploadWifeImageFooter');
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    // Show loading state
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+    btn.disabled = true;
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('w_image', fileInput.files[0]);
+    formData.append('id', '<?php echo $row['id']; ?>');
+    
+    // Make AJAX request
+    fetch('wupload.php?id=<?php echo $row['id']; ?>', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-success">Success!</h5>
+                    <p class="mb-0">${data.message}</p>
+                    </div>
+            `;
+            
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="closeUploadWifeModal">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            `;
+            
+            // Update the wife image in the DOM
+            document.getElementById('closeUploadWifeModal').addEventListener('click', function() {
+                const wifeImageContainer = document.getElementById('wife-image-container');
+                if (wifeImageContainer && data.filename) {
+                    // Store the new filename for delete functionality
+                    window.currentWifeImage = data.filename;
+                    
+                    wifeImageContainer.innerHTML = `
+                        <img src="../images/member/${data.filename}?t=${new Date().getTime()}" class="member-avatar" alt="Wife Photo">
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteWifeImageModal">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+        } else {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+            </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            `;
+        }
+    })
+    .catch(error => {
+        // Show error message
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error uploading photo: ${error.message}
+        </div>
+        `;
+        btn.innerHTML = '<i class="bi bi-upload"></i> Upload';
+        btn.disabled = false;
+    });
+});
+</script>
 
 <!-- Delete Wife Image Modal -->
 <div class="modal fade" id="deleteWifeImageModal" tabindex="-1" aria-labelledby="deleteWifeImageModalLabel" aria-hidden="true">
@@ -824,26 +1108,112 @@ include('../includes/header.php');
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" id="deleteWifeImageBody">
                 <p>Are you sure you want to delete the wife's photo?</p>
                 <p class="text-danger mb-0">
                     <i class="bi bi-exclamation-circle"></i> 
                     This action cannot be undone.
                 </p>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" id="deleteWifeImageFooter">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="wimagedelete.php" method="POST" style="display: inline;">
-                    <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
-                    <input type="hidden" name="w_image" value="<?php echo $row['w_image']; ?>">
-                    <button type="submit" class="btn btn-danger">
+                <button type="button" class="btn btn-danger" id="confirmDeleteWifeImage">
                         <i class="bi bi-trash"></i> Delete Photo
                     </button>
-                </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Initialize current wife image filename
+window.currentWifeImage = '<?php echo $row['w_image'] ?? ''; ?>';
+
+document.getElementById('confirmDeleteWifeImage')?.addEventListener('click', function() {
+    const btn = this;
+    const modalBody = document.getElementById('deleteWifeImageBody');
+    const modalFooter = document.getElementById('deleteWifeImageFooter');
+    
+    // Show loading state
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+    btn.disabled = true;
+    
+    // Use the current image filename (updated after upload)
+    const imageFilename = window.currentWifeImage || '<?php echo $row['w_image'] ?? ''; ?>';
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('image', imageFilename);
+    formData.append('id', '<?php echo $row['id']; ?>');
+    
+    // Make AJAX request
+    fetch('wdelete.php?id=<?php echo $row['id']; ?>&w_image=' + encodeURIComponent(imageFilename), {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-success">Success!</h5>
+                    <p class="mb-0">${data.message}</p>
+                </div>
+            `;
+            
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="closeDeleteWifeModal">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            `;
+            
+            // Update the wife image in the DOM to show placeholder
+            document.getElementById('closeDeleteWifeModal').addEventListener('click', function() {
+                const wifeImageContainer = document.getElementById('wife-image-container');
+                if (wifeImageContainer) {
+                    // Clear the current image filename
+                    window.currentWifeImage = '';
+                    
+                    wifeImageContainer.innerHTML = `
+                        <div class="member-avatar-placeholder">
+                            <div>
+                                <i class="bi bi-person-heart" style="font-size: 24px;"></i><br>
+                                No Photo
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadWifeImageModal">
+                                <i class="bi bi-upload"></i> Upload Photo
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+        } else {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+                </div>
+            `;
+            btn.innerHTML = '<i class="bi bi-trash"></i> Delete Photo';
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        // Show error message
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error deleting photo: ${error.message}
+            </div>
+        `;
+        btn.innerHTML = '<i class="bi bi-trash"></i> Delete Photo';
+        btn.disabled = false;
+    });
+});
+</script>
 
 <!-- Add Son Modal -->
 <div class="modal fade" id="addSonModal" tabindex="-1" aria-labelledby="addSonModalLabel" aria-hidden="true">
@@ -866,25 +1236,25 @@ include('../includes/header.php');
                     <form id="addSonForm" method="post">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Name</label>
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="c_name" placeholder="Son's Name" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Mobile No</label>
-                            <input type="tel" class="form-control" name="c_mobile_no" placeholder="Mobile No" value="-">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Date of Birth</label>
+                            <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="c_dob" required>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Mobile No</label>
+                            <input type="tel" class="form-control" name="c_mobile_no" placeholder="Mobile No">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="c_email" placeholder="Email" value="-">
+                            <input type="email" class="form-control" name="c_email" placeholder="Email">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Education</label>
                             <select class="form-select" name="c_qualification">
-                                <option value="-">Select Education</option>
+                                <option value="">Select Education</option>
                                 <option value="10th">10th</option>
                                 <option value="12th">12th</option>
                                 <option value="Diploma">Diploma</option>
@@ -895,12 +1265,12 @@ include('../includes/header.php');
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Education Details</label>
-                            <input type="text" class="form-control" name="c_education_details" placeholder="Education Details" value="-">
+                            <input type="text" class="form-control" name="c_education_details" placeholder="Education Details">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Occupation</label>
                             <select class="form-select" name="c_occupation">
-                                <option value="-">Select Occupation</option>
+                                <option value="">Select Occupation</option>
                                 <option value="Student">Student</option>
                                 <option value="Employee">Employee</option>
                                 <option value="Business">Business</option>
@@ -910,12 +1280,12 @@ include('../includes/header.php');
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Occupation Details</label>
-                            <input type="text" class="form-control" name="c_occupation_details" placeholder="Occupation Details" value="-">
+                            <input type="text" class="form-control" name="c_occupation_details" placeholder="Occupation Details">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Blood Group</label>
                             <select class="form-select" name="c_blood_group">
-                                <option value="-">Select Blood Group</option>
+                                <option value="">Select Blood Group</option>
                                 <option value="A+">A+</option>
                                 <option value="A-">A-</option>
                                 <option value="B+">B+</option>
@@ -970,25 +1340,25 @@ include('../includes/header.php');
                     <form id="addDaughterForm" method="post">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Name</label>
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="c_name" placeholder="Daughter's Name" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Mobile No</label>
-                            <input type="tel" class="form-control" name="c_mobile_no" placeholder="Mobile No" value="-">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Date of Birth</label>
+                            <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="c_dob" required>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Mobile No</label>
+                            <input type="tel" class="form-control" name="c_mobile_no" placeholder="Mobile No">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="c_email" placeholder="Email" value="-">
+                            <input type="email" class="form-control" name="c_email" placeholder="Email">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Education</label>
                             <select class="form-select" name="c_qualification">
-                                <option value="-">Select Education</option>
+                                <option value="">Select Education</option>
                                 <option value="10th">10th</option>
                                 <option value="12th">12th</option>
                                 <option value="Diploma">Diploma</option>
@@ -999,12 +1369,12 @@ include('../includes/header.php');
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Education Details</label>
-                            <input type="text" class="form-control" name="c_education_details" placeholder="Education Details" value="-">
+                            <input type="text" class="form-control" name="c_education_details" placeholder="Education Details">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Occupation</label>
                             <select class="form-select" name="c_occupation">
-                                <option value="-">Select Occupation</option>
+                                <option value="">Select Occupation</option>
                                 <option value="Student">Student</option>
                                 <option value="Employee">Employee</option>
                                 <option value="Business">Business</option>
@@ -1014,12 +1384,12 @@ include('../includes/header.php');
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Occupation Details</label>
-                            <input type="text" class="form-control" name="c_occupation_details" placeholder="Occupation Details" value="-">
+                            <input type="text" class="form-control" name="c_occupation_details" placeholder="Occupation Details">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Blood Group</label>
                             <select class="form-select" name="c_blood_group">
-                                <option value="-">Select Blood Group</option>
+                                <option value="">Select Blood Group</option>
                                 <option value="A+">A+</option>
                                 <option value="A-">A-</option>
                                 <option value="B+">B+</option>
@@ -1063,83 +1433,672 @@ include('../includes/header.php');
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <?php
-                $upload_dir = "../images/member/";
-                $msg = '';
-                
-                if (isset($_FILES["app_front"]) && isset($_FILES["app_back"])) {
-                    if ($_FILES["app_front"]["error"] > 0 || $_FILES["app_back"]["error"] > 0) {
-                        $msg = "Error: " . $_FILES["app_front"]["error"] . " " . $_FILES["app_back"]["error"];
-                    } else {
-                        if ($_FILES["app_front"]["type"] != 'image/jpeg' || $_FILES["app_back"]["type"] != 'image/jpeg') {
-                            $msg = "Images should be in JPEG format";
-                        } else {
-                            $s = $id . "_appfront.jpg";
-                            $s1 = $id . "_appback.jpg";
-                            
-                            if (file_exists("../images/member/" . $s)) {
-                                unlink("../images/member/" . $s);
-                            }
-                            if (file_exists("../images/member/" . $s1)) {
-                                unlink("../images/member/" . $s1);
-                            }
-                            
-                            move_uploaded_file($_FILES["app_front"]["tmp_name"], "../images/member/" . $s);
-                            move_uploaded_file($_FILES["app_back"]["tmp_name"], "../images/member/" . $s1);
-                            chmod("../images/member/" . $s, 0664);
-                            chmod("../images/member/" . $s1, 0664);
+            <div class="modal-body" id="uploadApplicationBody">
+                <form id="uploadApplicationForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="app_front" class="form-label">Front page of application form:</label>
+                        <input type="file" class="form-control" name="app_front" id="app_front" accept="image/jpeg,image/jpg,image/png" required>
+                        <div class="form-text">JPEG, JPG or PNG images are allowed.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="app_back" class="form-label">Back page of application form:</label>
+                        <input type="file" class="form-control" name="app_back" id="app_back" accept="image/jpeg,image/jpg,image/png" required>
+                        <div class="form-text">JPEG, JPG or PNG images are allowed.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" id="uploadApplicationFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="uploadApplicationBtn">
+                    <i class="bi bi-upload"></i> Upload Application
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-                            $sql = "UPDATE `$tbl_family` SET `app_front`=?, `app_back`=? WHERE `id`=?";
-                            $stmt = mysqli_prepare($con, $sql);
-                            mysqli_stmt_bind_param($stmt, "ssi", $s, $s1, $id);
-                            
-                            if (mysqli_stmt_execute($stmt)) {
-                                $msg = "Application uploaded successfully!";
-                            } else {
-                                $msg = "Error: " . mysqli_error($con);
-                            }
-                            mysqli_stmt_close($stmt);
-                        }
+<script>
+document.getElementById('uploadApplicationBtn')?.addEventListener('click', function() {
+    const form = document.getElementById('uploadApplicationForm');
+    const frontInput = document.getElementById('app_front');
+    const backInput = document.getElementById('app_back');
+    const btn = this;
+    const modalBody = document.getElementById('uploadApplicationBody');
+    const modalFooter = document.getElementById('uploadApplicationFooter');
+    
+    if (!frontInput.files || frontInput.files.length === 0) {
+        alert('Please select front page image');
+        return;
+    }
+    
+    if (!backInput.files || backInput.files.length === 0) {
+        alert('Please select back page image');
+        return;
+    }
+    
+    // Show loading state
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+    btn.disabled = true;
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('app_front', frontInput.files[0]);
+    formData.append('app_back', backInput.files[0]);
+    formData.append('id', '<?php echo $row['id']; ?>');
+    
+    // Make AJAX request
+    fetch('appupload.php?id=<?php echo $row['id']; ?>', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-success">Success!</h5>
+                    <p class="mb-0">${data.message}</p>
+                </div>
+            `;
+            
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="closeUploadApplicationModal">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            `;
+            
+            // Update the button in the DOM
+            document.getElementById('closeUploadApplicationModal').addEventListener('click', function() {
+                // Store the new filenames for delete functionality
+                if (data.app_front) window.currentAppFront = data.app_front;
+                if (data.app_back) window.currentAppBack = data.app_back;
+                
+                // Find and update the upload button to "View Application"
+                const buttonContainer = document.querySelector('.card-body.text-center');
+                if (buttonContainer && data.app_front && data.app_back) {
+                    const uploadBtn = buttonContainer.querySelector('button[data-bs-target="#uploadApplicationModal"]');
+                    if (uploadBtn) {
+                        uploadBtn.outerHTML = `
+                            <button class="btn btn-primary me-2" onclick="applicationview(<?php echo $id; ?>)">
+                                <i class="bi bi-file-text"></i> View Application
+                            </button>
+                        `;
                     }
                 }
-                ?>
-                
-                <?php if ($msg): ?>
-                    <div class="alert alert-<?php echo strpos($msg, 'Error') !== false ? 'danger' : 'success'; ?> alert-dismissible fade show" role="alert">
-                        <i class="bi bi-<?php echo strpos($msg, 'Error') !== false ? 'exclamation-triangle' : 'check-circle'; ?>"></i> <?php echo $msg; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            });
+        } else {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            `;
+        }
+    })
+    .catch(error => {
+        // Show error message
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error uploading application: ${error.message}
+            </div>
+        `;
+        btn.innerHTML = '<i class="bi bi-upload"></i> Upload Application';
+        btn.disabled = false;
+    });
+});
+</script>
+
+<!-- View Application Modal -->
+<div class="modal fade" id="viewApplicationModal" tabindex="-1" aria-labelledby="viewApplicationModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90%; max-height: 95vh;">
+        <div class="modal-content" style="max-height: 90vh;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewApplicationModalLabel">
+                    <i class="bi bi-file-text"></i> View Application
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+            <div class="modal-body" style="max-height: calc(90vh - 120px); overflow-y: auto;">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <h6 class="text-center mb-3">Front Page</h6>
+                        <?php if ($row['app_front'] && file_exists("../images/member/" . $row['app_front'])): ?>
+                            <img src="../images/member/<?php echo htmlspecialchars($row['app_front']); ?>" 
+                                 class="img-fluid border rounded shadow-sm" 
+                                 alt="Application Front Page"
+                                 style="width: 100%; cursor: pointer;"
+                                 ondblclick="window.open(this.src, '_blank')">
+                            <p class="text-center text-muted small mt-2">
+                                <i class="bi bi-zoom-in"></i> Double-click image to view full size
+                            </p>
+                        <?php else: ?>
+                            <div class="alert alert-warning">Front page not available</div>
                 <?php endif; ?>
-                
-                <?php if (!(is_dir($upload_dir) && is_writable($upload_dir))): ?>
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Upload directory is not writable, or does not exist.
                     </div>
+                    <div class="col-md-6 mb-4">
+                        <h6 class="text-center mb-3">Back Page</h6>
+                        <?php if ($row['app_back'] && file_exists("../images/member/" . $row['app_back'])): ?>
+                            <img src="../images/member/<?php echo htmlspecialchars($row['app_back']); ?>" 
+                                 class="img-fluid border rounded shadow-sm" 
+                                 alt="Application Back Page"
+                                 style="width: 100%; cursor: pointer;"
+                                 ondblclick="window.open(this.src, '_blank')">
+                            <p class="text-center text-muted small mt-2">
+                                <i class="bi bi-zoom-in"></i> Double-click image to view full size
+                            </p>
                 <?php else: ?>
-                    <form action="" method="post" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label for="app_front" class="form-label">Front page of application form:</label>
-                            <input type="file" class="form-control" name="app_front" id="app_front" accept="image/jpeg" required>
-                            <div class="form-text">Only JPEG images are allowed.</div>
+                            <div class="alert alert-warning">Back page not available</div>
+                        <?php endif; ?>
                         </div>
-                        <div class="mb-3">
-                            <label for="app_back" class="form-label">Back page of application form:</label>
-                            <input type="file" class="form-control" name="app_back" id="app_back" accept="image/jpeg" required>
-                            <div class="form-text">Only JPEG images are allowed.</div>
                         </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" name="submit" class="btn btn-primary">
-                                <i class="bi bi-upload"></i> Upload Application
-                            </button>
-                        </div>
-                    </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Close
+                </button>
+                <?php if ($row['app_front'] && $row['app_back']): ?>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteApplicationModal">
+                    <i class="bi bi-trash"></i> Delete Application
+                </button>
                 <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Delete Application Modal -->
+<div class="modal fade" id="deleteApplicationModal" tabindex="-1" aria-labelledby="deleteApplicationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteApplicationModalLabel">
+                    <i class="bi bi-trash"></i> Delete Application
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="deleteApplicationBody">
+                <p>Are you sure you want to delete the application images?</p>
+                <p class="text-danger mb-0">
+                    <i class="bi bi-exclamation-circle"></i> 
+                    This action cannot be undone and will permanently remove both front and back page images.
+                </p>
+            </div>
+            <div class="modal-footer" id="deleteApplicationFooter">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteApplication">
+                    <i class="bi bi-trash"></i> Delete Application
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize current application image filenames
+window.currentAppFront = '<?php echo $row['app_front'] ?? ''; ?>';
+window.currentAppBack = '<?php echo $row['app_back'] ?? ''; ?>';
+
+document.getElementById('confirmDeleteApplication')?.addEventListener('click', function() {
+    const btn = this;
+    const modalBody = document.getElementById('deleteApplicationBody');
+    const modalFooter = document.getElementById('deleteApplicationFooter');
+    
+    // Show loading state
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+    btn.disabled = true;
+    
+    // Use the current image filenames
+    const appFront = window.currentAppFront || '<?php echo $row['app_front'] ?? ''; ?>';
+    const appBack = window.currentAppBack || '<?php echo $row['app_back'] ?? ''; ?>';
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('app_front', appFront);
+    formData.append('app_back', appBack);
+    formData.append('id', '<?php echo $row['id']; ?>');
+    
+    // Make AJAX request
+    fetch('appdelete.php?id=<?php echo $row['id']; ?>&app_front=' + encodeURIComponent(appFront) + '&app_back=' + encodeURIComponent(appBack), {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-success">Success!</h5>
+                    <p class="mb-0">${data.message}</p>
+                </div>
+            `;
+            
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="closeDeleteApplicationModal">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            `;
+            
+            // Update the button in the DOM to show "Upload Application"
+            document.getElementById('closeDeleteApplicationModal').addEventListener('click', function() {
+                // Clear the current filenames
+                window.currentAppFront = '';
+                window.currentAppBack = '';
+                
+                // Find and update the view button to "Upload Application"
+                const buttonContainer = document.querySelector('.card-body.text-center');
+                if (buttonContainer) {
+                    const viewBtn = buttonContainer.querySelector('button[onclick*="applicationview"]');
+                    if (viewBtn) {
+                        viewBtn.outerHTML = `
+                            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#uploadApplicationModal">
+                                <i class="bi bi-upload"></i> Upload Application
+                            </button>
+                        `;
+                    }
+                }
+                
+                // Close the view application modal if it's open
+                const viewModal = bootstrap.Modal.getInstance(document.getElementById('viewApplicationModal'));
+                if (viewModal) {
+                    viewModal.hide();
+                }
+            });
+        } else {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+                </div>
+            `;
+            btn.innerHTML = '<i class="bi bi-trash"></i> Delete Application';
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        // Show error message
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error deleting application: ${error.message}
+            </div>
+        `;
+        btn.innerHTML = '<i class="bi bi-trash"></i> Delete Application';
+        btn.disabled = false;
+    });
+});
+</script>
+
+<!-- Upload Child Image Modal -->
+<div class="modal fade" id="uploadChildImageModal" tabindex="-1" aria-labelledby="uploadChildImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadChildImageModalLabel">
+                    <i class="bi bi-upload"></i> Upload Child Photo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="uploadChildImageBody">
+                <form id="uploadChildImageForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="c_image" class="form-label">Select child image:</label>
+                        <input type="file" class="form-control" name="c_image" id="c_image" accept="image/jpeg,image/jpg,image/png" required>
+                        <div class="form-text">JPEG, JPG or PNG images are allowed.</div>
+                        </div>
+                    </form>
+            </div>
+            <div class="modal-footer" id="uploadChildImageFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="uploadChildImageBtn">
+                    <i class="bi bi-upload"></i> Upload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentChildId = null;
+let currentFatherId = null;
+
+// When upload modal is shown, capture the child ID and father ID
+document.getElementById('uploadChildImageModal')?.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    currentChildId = button.getAttribute('data-child-id');
+    currentFatherId = button.getAttribute('data-father-id');
+});
+
+document.getElementById('uploadChildImageBtn')?.addEventListener('click', function() {
+    const form = document.getElementById('uploadChildImageForm');
+    const fileInput = document.getElementById('c_image');
+    const btn = this;
+    const modalBody = document.getElementById('uploadChildImageBody');
+    const modalFooter = document.getElementById('uploadChildImageFooter');
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    if (!currentChildId) {
+        alert('Child ID not found');
+        return;
+    }
+    
+    // Show loading state
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+    btn.disabled = true;
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('c_image', fileInput.files[0]);
+    formData.append('id', currentChildId);
+    formData.append('father_id', currentFatherId);
+    
+    // Make AJAX request
+    fetch('cupload.php?id=' + currentChildId + '&father_id=' + currentFatherId, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-success">Success!</h5>
+                    <p class="mb-0">${data.message}</p>
+                </div>
+            `;
+            
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="closeUploadChildModal">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            `;
+            
+            // Update the child image in the DOM
+            document.getElementById('closeUploadChildModal').addEventListener('click', function() {
+                const childImageContainer = document.getElementById('child-image-container-' + currentChildId);
+                if (childImageContainer && data.filename) {
+                    childImageContainer.innerHTML = `
+                        <img src="../images/member/${data.filename}?t=${new Date().getTime()}" class="member-avatar" alt="Child Photo">
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteChildImageModal" data-child-id="${currentChildId}" data-child-image="${data.filename}">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+        } else {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            `;
+        }
+    })
+    .catch(error => {
+        // Show error message
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error uploading photo: ${error.message}
+            </div>
+        `;
+        btn.innerHTML = '<i class="bi bi-upload"></i> Upload';
+        btn.disabled = false;
+    });
+});
+</script>
+
+<!-- Delete Child Image Modal -->
+<div class="modal fade" id="deleteChildImageModal" tabindex="-1" aria-labelledby="deleteChildImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteChildImageModalLabel">
+                    <i class="bi bi-trash"></i> Delete Child Photo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="deleteChildImageBody">
+                <p>Are you sure you want to delete this child's photo?</p>
+                <p class="text-danger mb-0">
+                    <i class="bi bi-exclamation-circle"></i> 
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer" id="deleteChildImageFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteChildImage">
+                    <i class="bi bi-trash"></i> Delete Photo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let deleteChildId = null;
+let deleteChildImage = null;
+
+// When delete modal is shown, capture the child ID and image filename
+document.getElementById('deleteChildImageModal')?.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    deleteChildId = button.getAttribute('data-child-id');
+    deleteChildImage = button.getAttribute('data-child-image');
+});
+
+document.getElementById('confirmDeleteChildImage')?.addEventListener('click', function() {
+    const btn = this;
+    const modalBody = document.getElementById('deleteChildImageBody');
+    const modalFooter = document.getElementById('deleteChildImageFooter');
+    
+    if (!deleteChildId) {
+        alert('Child ID not found');
+        return;
+    }
+    
+    // Show loading state
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+    btn.disabled = true;
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('image', deleteChildImage || '');
+    formData.append('id', deleteChildId);
+    
+    // Make AJAX request
+    fetch('cdelete.php?id=' + deleteChildId + '&c_image=' + encodeURIComponent(deleteChildImage || ''), {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-success">Success!</h5>
+                    <p class="mb-0">${data.message}</p>
+                </div>
+            `;
+            
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="closeDeleteChildModal">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            `;
+            
+            // Update the child image in the DOM to show placeholder
+            document.getElementById('closeDeleteChildModal').addEventListener('click', function() {
+                const childImageContainer = document.getElementById('child-image-container-' + deleteChildId);
+                if (childImageContainer) {
+                    childImageContainer.innerHTML = `
+                        <div class="member-avatar-placeholder">
+                            <div>
+                                <i class="bi bi-person" style="font-size: 20px;"></i><br>
+                                No Photo
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadChildImageModal" data-child-id="${deleteChildId}" data-father-id="<?php echo $id; ?>">
+                                <i class="bi bi-upload"></i> Upload Photo
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+        } else {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+                </div>
+            `;
+            btn.innerHTML = '<i class="bi bi-trash"></i> Delete Photo';
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        // Show error message
+        modalBody.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error deleting photo: ${error.message}
+            </div>
+        `;
+        btn.innerHTML = '<i class="bi bi-trash"></i> Delete Photo';
+        btn.disabled = false;
+    });
+});
+</script>
+
+<!-- Delete Child Modal -->
+<div class="modal fade" id="deleteChildModal" tabindex="-1" aria-labelledby="deleteChildModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteChildModalLabel">
+                    <i class="bi bi-trash"></i> Delete Child
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="deleteChildModalBody">
+                <p>Are you sure you want to delete <strong id="deleteChildName"></strong>?</p>
+                <p class="text-danger mb-0">
+                    <i class="bi bi-exclamation-circle"></i> 
+                    This action cannot be undone and will permanently remove the child record.
+                </p>
+            </div>
+            <div class="modal-footer" id="deleteChildModalFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteChild">
+                    <i class="bi bi-trash"></i> Delete Child
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let deleteChildRecordId = null;
+
+// When delete modal is shown, capture the child ID and name
+document.getElementById('deleteChildModal')?.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    deleteChildRecordId = button.getAttribute('data-child-id');
+    const childName = button.getAttribute('data-child-name');
+    
+    // Update the modal content
+    document.getElementById('deleteChildName').textContent = childName;
+    
+    // Reset modal to initial state
+    document.getElementById('deleteChildModalBody').innerHTML = `
+        <p>Are you sure you want to delete <strong>${childName}</strong>?</p>
+        <p class="text-danger mb-0">
+            <i class="bi bi-exclamation-circle"></i> 
+            This action cannot be undone and will permanently remove the child record.
+        </p>
+    `;
+    
+    document.getElementById('deleteChildModalFooter').innerHTML = `
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteChild">
+            <i class="bi bi-trash"></i> Delete Child
+        </button>
+    `;
+});
+
+// Handle delete confirmation
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'confirmDeleteChild') {
+        const btn = e.target;
+        const modalBody = document.getElementById('deleteChildModalBody');
+        const modalFooter = document.getElementById('deleteChildModalFooter');
+        
+        if (!deleteChildRecordId) {
+            alert('Child ID not found');
+            return;
+        }
+        
+        // Show loading state
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+        btn.disabled = true;
+        
+        // Make AJAX request
+        fetch('childdelete_ajax.php?id=' + deleteChildRecordId, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                modalBody.innerHTML = `
+                    <div class="text-center">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-success">Success!</h5>
+                        <p class="mb-0">${data.message}</p>
+                    </div>
+                `;
+                
+                modalFooter.innerHTML = `
+                    <button type="button" class="btn btn-success" onclick="window.location.reload()">
+                        <i class="bi bi-check-circle"></i> OK
+                    </button>
+                `;
+            } else {
+                // Show error message
+                modalBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> ${data.message}
+                    </div>
+                `;
+                btn.innerHTML = '<i class="bi bi-trash"></i> Delete Child';
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            // Show error message
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Error deleting child: ${error.message}
+                </div>
+            `;
+            btn.innerHTML = '<i class="bi bi-trash"></i> Delete Child';
+            btn.disabled = false;
+        });
+    }
+});
+</script>
 
 <!-- Add Horoscope Modal -->
 <div class="modal fade" id="addHoroscopeModal" tabindex="-1" aria-labelledby="addHoroscopeModalLabel" aria-hidden="true">
@@ -1959,15 +2918,25 @@ function applicupload(id) {
 }
 
 function applicationview(id) {
-    url = "applicationview.php?id=" + id;
-    title = "popup";
-    var newWindow = window.open(url, title, 'scrollbars=yes, width=800, height=600');
+    // Show the view application modal
+    const modal = new bootstrap.Modal(document.getElementById('viewApplicationModal'));
+    modal.show();
 }
 
 function printid() {
     url = "printid.php?id=<?php echo $id; ?>";
     title = "popup";
     var newWindow = window.open(url, title, 'scrollbars=yes, width=500, height=400');
+}
+
+function editMemberId() {
+    document.getElementById('memberIdDisplay').style.display = 'none';
+    document.getElementById('memberIdEdit').style.display = 'flex';
+}
+
+function cancelEditMemberId() {
+    document.getElementById('memberIdDisplay').style.display = 'block';
+    document.getElementById('memberIdEdit').style.display = 'none';
 }
 
 // Handle form submissions and page refresh only when data is actually submitted
@@ -2299,5 +3268,172 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<!-- Print ID Card Modal -->
+<div class="modal fade" id="printIdModal" tabindex="-1" aria-labelledby="printIdModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="printIdModalLabel">
+                    <i class="bi bi-card-heading"></i> Member ID Card
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="idCardContent">
+                <style>
+                    @media print {
+                        body * {
+                            visibility: hidden;
+                        }
+                        #idCardContent, #idCardContent * {
+                            visibility: visible;
+                        }
+                        #idCardContent {
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            width: 100%;
+                        }
+                        .modal-header, .modal-footer, .btn-close {
+                            display: none !important;
+                        }
+                    }
+                    
+                    .id-card {
+                        border: 3px solid #4e73df;
+                        border-radius: 15px;
+                        padding: 20px;
+                        background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
+                        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                    }
+                    
+                    .id-card-header {
+                        text-align: center;
+                        border-bottom: 2px solid #4e73df;
+                        padding-bottom: 15px;
+                        margin-bottom: 20px;
+                    }
+                    
+                    .id-card-header h6 {
+                        color: #4e73df;
+                        font-weight: 700;
+                        margin: 0;
+                        font-size: 16px;
+                    }
+                    
+                    .id-card-body {
+                        display: flex;
+                        gap: 20px;
+                    }
+                    
+                    .id-card-photo {
+                        flex-shrink: 0;
+                    }
+                    
+                    .id-card-photo img {
+                        width: 120px;
+                        height: 140px;
+                        object-fit: cover;
+                        border: 2px solid #4e73df;
+                        border-radius: 8px;
+                    }
+                    
+                    .id-card-details {
+                        flex-grow: 1;
+                    }
+                    
+                    .id-detail-row {
+                        display: flex;
+                        padding: 8px 0;
+                        border-bottom: 1px solid #e3e6f0;
+                    }
+                    
+                    .id-detail-row:last-child {
+                        border-bottom: none;
+                    }
+                    
+                    .id-detail-label {
+                        font-weight: 600;
+                        color: #5a5c69;
+                        min-width: 100px;
+                    }
+                    
+                    .id-detail-value {
+                        color: #2e2f37;
+                        font-weight: 500;
+                    }
+                </style>
+                
+                <div class="id-card">
+                    <div class="id-card-header">
+                        <h6><?php echo $org_name; ?></h6>
+                    </div>
+                    
+                    <div class="id-card-body">
+                        <div class="id-card-photo">
+                            <?php if ($row['image'] && file_exists("../images/member/" . $row['image'])): ?>
+                                <img src="../images/member/<?php echo htmlspecialchars($row['image']); ?>" alt="Member Photo">
+                            <?php else: ?>
+                                <div style="width: 120px; height: 140px; background: #e3e6f0; display: flex; align-items: center; justify-content: center; border: 2px solid #4e73df; border-radius: 8px;">
+                                    <i class="bi bi-person" style="font-size: 48px; color: #858796;"></i>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div class="id-card-details">
+                            <?php if (!empty($row['member_id'])): ?>
+                            <div class="id-detail-row">
+                                <div class="id-detail-label">உ எண் :</div>
+                                <div class="id-detail-value"><?php echo htmlspecialchars($row['member_id']); ?></div>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <div class="id-detail-row">
+                                <div class="id-detail-label">பெயர் :</div>
+                                <div class="id-detail-value"><?php echo htmlspecialchars($row['name']); ?></div>
+                            </div>
+                            
+                            <?php if (!empty($row['dob'])): ?>
+                            <div class="id-detail-row">
+                                <div class="id-detail-label">வயது :</div>
+                                <div class="id-detail-value">
+                                    <?php 
+                                    $dob = new DateTime($row['dob']);
+                                    $now = new DateTime();
+                                    $age = $now->diff($dob)->y;
+                                    echo $age;
+                                    ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <?php if (!empty($row['village'])): ?>
+                            <div class="id-detail-row">
+                                <div class="id-detail-label">ஊர் :</div>
+                                <div class="id-detail-value"><?php echo htmlspecialchars($row['village']); ?></div>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <?php if (!empty($row['mobile_no'])): ?>
+                            <div class="id-detail-row">
+                                <div class="id-detail-label">மொபைல் :</div>
+                                <div class="id-detail-value"><?php echo htmlspecialchars($row['mobile_no']); ?></div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Close
+                </button>
+                <button type="button" class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <?php include('../includes/footer.php'); ?>

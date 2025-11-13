@@ -49,4 +49,8 @@ $modern_path = $base_dir . '/modern';
 // Shared assets path (if needed)
 $shared_assets = $base_dir . '/current';
 
+// Organization details
+$org_name = 'அருள்மிகு புது வெங்ககரை அம்மன் கோயில்';
+$org_name_english = 'Arulmigu Puthukarai Amman Kovil';
+
 ?>

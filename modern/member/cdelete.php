@@ -1,22 +1,41 @@
 <?php
-include('../popupheader.php');
-$c_image = isset($_POST['c_image']) ? $_POST['c_image'] : '';
-$file = "../images/". $c_image;
-if (!unlink($file))
-  {
-  ?>
-  <div class="callout callout-danger">
-          <h4>Error in deleting this image!</h4>
-        </div>
-		<?php
-  }
-else
-  {
-	  ?>
-  <div class="callout callout-danger">
-          <h4>Deleted successfully!</h4>
-        </div>
-		<?php
-		}
- include('../footer.php');
+include('../init.php');
+check_login();
+
+header('Content-Type: application/json');
+
+$response = ['success' => false, 'message' => ''];
+
+if (isset($_GET['id']) && isset($_GET['c_image'])) {
+    $child_id = (int)$_GET['id'];
+    $image_filename = $_GET['c_image'];
+
+    if ($child_id > 0) {
+        $image_path = dirname(__DIR__) . "/images/member/" . $image_filename;
+
+        // Check if the file exists and delete it
+        if (!empty($image_filename) && file_exists($image_path)) {
+            unlink($image_path);
+        }
+        
+        // Update the database to clear the image field
+        $sql = "UPDATE $tbl_child SET c_image = '' WHERE id = ?";
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, 'i', $child_id);
+
+        if (mysqli_stmt_execute($stmt)) {
+            $response['success'] = true;
+            $response['message'] = 'Child photo deleted successfully.';
+        } else {
+            $response['message'] = 'Failed to update database.';
+        }
+        mysqli_stmt_close($stmt);
+    } else {
+        $response['message'] = 'Invalid child ID.';
+    }
+} else {
+    $response['message'] = 'Required parameters missing.';
+}
+
+echo json_encode($response);
 ?>

@@ -3,7 +3,7 @@ include('../popupheader.php');
 
 $id = $_GET['id'];
 $s = $id . "_husband.jpg";
-$upload_dir = $base_dir . "/images/member/";
+$upload_dir = dirname(__FILE__) . "/../images/member/";
 //echo $upload_dir;
 $msg = '';
 

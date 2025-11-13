@@ -66,11 +66,16 @@ if (!empty($_GET['filter_kattalai'])) {
     $params[] = $_GET['filter_kattalai'];
     $param_types .= 'i';
 }
-$where_sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+// Add deleted filter (not as a parameter, directly in SQL)
+$where[] = "deleted = 0";
+
+$where_sql = 'WHERE ' . implode(' AND ', $where);
 
 // Get total records for pagination
 $stmt = $con->prepare("SELECT COUNT(*) FROM $tbl_family $where_sql");
-if ($params) $stmt->bind_param($param_types, ...$params);
+if (!empty($params)) {
+    $stmt->bind_param($param_types, ...$params);
+}
 $stmt->execute();
 $stmt->bind_result($total_records);
 $stmt->fetch();
@@ -79,7 +84,7 @@ $stmt->close();
 // Get paginated records
 $sql = "SELECT * FROM $tbl_family $where_sql ORDER BY id DESC LIMIT ? OFFSET ?";
 $stmt = $con->prepare($sql);
-if ($params) {
+if (!empty($params)) {
     $types = $param_types . 'ii';
     $bind_params = array_merge($params, [$per_page, $offset]);
     $stmt->bind_param($types, ...$bind_params);
@@ -659,8 +664,11 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                                 </a>
                                                 <button type="button" 
                                                         class="btn btn-sm btn-outline-danger" 
-                                                        data-bs-toggle="tooltip" title="Delete"
-                                                        onclick="deleteMember(<?php echo $family['id']; ?>, '<?php echo htmlspecialchars($family['name']); ?>')">
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#deleteModal"
+                                                        data-member-id="<?php echo $family['id']; ?>"
+                                                        data-member-name="<?php echo htmlspecialchars($family['name']); ?>"
+                                                        title="Delete">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </div>
@@ -736,36 +744,41 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 
 <script>
 let memberToDelete = null;
-let deleteModal = null;
 
-function deleteMember(id, name) {
-    memberToDelete = id;
-    document.getElementById('memberName').textContent = name;
+// Listen for modal show event
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteModalElement = document.getElementById('deleteModal');
     
-    // Reset modal content
-    document.getElementById('deleteModalBody').innerHTML = `
-        <p>Are you sure you want to delete member <strong>${name}</strong>?</p>
-        <p class="text-danger mb-0">
-            <i class="bi bi-exclamation-circle"></i> 
-            This action cannot be undone and will permanently remove the member from the system.
-        </p>
-    `;
-    
-    document.getElementById('deleteModalFooter').innerHTML = `
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <i class="bi bi-x-circle"></i> Cancel
-        </button>
-        <button type="button" class="btn btn-danger" id="confirmDelete">
-            <i class="bi bi-trash"></i> Delete Member
-        </button>
-    `;
-    
-    // Re-attach event listener
-    document.getElementById('confirmDelete').addEventListener('click', handleDelete);
-    
-    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    deleteModal.show();
-}
+    deleteModalElement.addEventListener('show.bs.modal', function (event) {
+        // Button that triggered the modal
+        const button = event.relatedTarget;
+        
+        // Extract info from data-* attributes
+        memberToDelete = button.getAttribute('data-member-id');
+        const memberName = button.getAttribute('data-member-name');
+        
+        // Update the modal's content
+        document.getElementById('memberName').textContent = memberName;
+        
+        // Reset modal content to initial state
+        document.getElementById('deleteModalBody').innerHTML = `
+            <p>Are you sure you want to delete member <strong>${memberName}</strong>?</p>
+            <p class="text-danger mb-0">
+                <i class="bi bi-exclamation-circle"></i> 
+                This action cannot be undone and will permanently remove the member from the system.
+            </p>
+        `;
+        
+        document.getElementById('deleteModalFooter').innerHTML = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle"></i> Cancel
+            </button>
+            <button type="button" class="btn btn-danger" id="confirmDelete" onclick="handleDelete()">
+                <i class="bi bi-trash"></i> Delete Member
+            </button>
+        `;
+    });
+});
 
 function handleDelete() {
     if (memberToDelete) {

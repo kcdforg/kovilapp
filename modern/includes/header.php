@@ -248,11 +248,38 @@
                             <i class="bi bi-people-fill"></i> Members
                         </a>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-filter"></i> List By
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/member/listby.php?type=village">
+                                <i class="bi bi-geo-alt"></i> Village
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/member/listby.php?type=blood_group">
+                                <i class="bi bi-droplet"></i> Blood Group
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/member/listby.php?type=qualification">
+                                <i class="bi bi-mortarboard"></i> Qualification
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/member/listby.php?type=occupation">
+                                <i class="bi bi-briefcase"></i> Occupation
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/member/listby.php?type=kattalai">
+                                <i class="bi bi-diagram-3"></i> Kattalai
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/member/listby.php?type=pudavai">
+                                <i class="bi bi-gift"></i> Pudavai
+                            </a></li>
+                        </ul>
+                    </li>
+                    <?php /* Matrimony link hidden - to be revived later
                     <li class="nav-item">
                         <a class="nav-link" href="<?php echo $path; ?>/matrimony/listhoroscope.php">
                             <i class="bi bi-heart-fill"></i> Matrimony
                         </a>
                     </li>
+                    */ ?>
                     <li class="nav-item">
                         <a class="nav-link" href="<?php echo $path; ?>/subscription/list.php">
                             <i class="bi bi-gift"></i> Donations
@@ -274,6 +301,9 @@
                             </a></li>
                             <li><a class="dropdown-item" href="<?php echo $path; ?>/settings/">
                                 <i class="bi bi-gear"></i> Settings
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?php echo $path; ?>/trash.php">
+                                <i class="bi bi-trash"></i> Trash
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="<?php echo $path; ?>/logout.php">

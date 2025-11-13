@@ -25,11 +25,19 @@ if (!empty($_GET['kattalai'])) {
     $where[] = "kattalai = ?";
     $params[] = $_GET['kattalai'];
 }
-$where_sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+// Add deleted filter to existing where conditions
+$where[] = "deleted = 0";
+$params[] = 0;
+
+$where_sql = 'WHERE ' . implode(' AND ', $where);
 
 // Get total records for pagination
 $stmt = $con->prepare("SELECT COUNT(*) FROM $tbl_family $where_sql");
-if ($params) $stmt->bind_param(str_repeat('s', count($params)), ...$params);
+if ($params) {
+    $param_types = str_repeat('s', count($params) - 1) . 'i'; // Last param is integer (deleted)
+    $stmt->bind_param($param_types, ...$params);
+}
 $stmt->execute();
 $stmt->bind_result($total_records);
 $stmt->fetch();
@@ -39,7 +47,7 @@ $stmt->close();
 $sql = "SELECT * FROM $tbl_family $where_sql ORDER BY id DESC LIMIT ? OFFSET ?";
 $stmt = $con->prepare($sql);
 if ($params) {
-    $types = str_repeat('s', count($params)) . 'ii';
+    $types = str_repeat('s', count($params) - 1) . 'iii'; // Last param is integer (deleted) + limit + offset
     $bind_params = array_merge($params, [$per_page, $offset]);
     $stmt->bind_param($types, ...$bind_params);
 } else {

@@ -238,7 +238,7 @@ function add_child($child) {
     global $con, $tbl_child;
     if (count($child) && $child['c_name'] != '') {
         $father_id = $child['father_id'];
-        $fam_id = $father_id; // fam_id is the same as father_id
+        $fam_id = 0; // Set fam_id as 0 initially (not linked to any family yet)
         $c_name = $child['c_name'];
         $c_dob = $child['c_dob'];
         $c_gender = $child['c_gender'];
@@ -257,7 +257,7 @@ function add_child($child) {
         $c_lastmodified_date = date('Y-m-d');
 
         $sql = "INSERT INTO `$tbl_child`(`fam_id`, `father_id`, `c_name`, `c_dob`, `c_gender`, `c_blood_group`, `c_marital_status`,`c_qualification`, `c_mobile_no`, `c_email`, `c_occupation`, `c_education_details`, `c_occupation_details`, `c_image`, `c_created_date`, `c_created_by`, `c_lastmodified_by`, `c_lastmodified_date`) 
-					VALUES ('$fam_id', '$father_id', '$c_name', '$c_dob', '$c_gender', '$c_blood_group', '$c_marital_status', '$c_qualification', '$c_mobile_no', '$c_email', '$c_occupation', '$c_education_details', '$c_occupation_details', '$c_image', '$c_created_date', '$c_created_by', '$c_lastmodified_by', '$c_lastmodified_date')";
+					VALUES (0, '$father_id', '$c_name', '$c_dob', '$c_gender', '$c_blood_group', '$c_marital_status', '$c_qualification', '$c_mobile_no', '$c_email', '$c_occupation', '$c_education_details', '$c_occupation_details', '$c_image', '$c_created_date', '$c_created_by', '$c_lastmodified_by', '$c_lastmodified_Fixe
         return mysqli_query($con, $sql);
     }
 }
@@ -614,8 +614,10 @@ function update_family($id, $data) {
         if (isset($data['dob']) && is_array($data['dob']) && isset($data['dob']['year']) && isset($data['dob']['month']) && isset($data['dob']['date']) && 
             !empty($data['dob']['year']) && !empty($data['dob']['month']) && !empty($data['dob']['date'])) {
             $dob = $data['dob']['year'] . "-" . $data['dob']['month'] . "-" . $data['dob']['date'];
+        } elseif (isset($data['dob']) && !empty($data['dob']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['dob'])) {
+            $dob = $data['dob'];
         } else {
-            $dob = isset($data['dob']) ? $data['dob'] : '';
+            $dob = 'NULL';
         }
         
         // $age = $data['age'];
@@ -624,14 +626,14 @@ function update_family($id, $data) {
         $education_details = sql_null_or_str($data['education_details']);
         $occupation = sql_null_or_int($data['occupation']);
         $occupation_details = sql_null_or_str($data['occupation_details']);
-        $w_education_details = sql_null_or_str($data['w_education_details']);
-        $w_occupation_details = sql_null_or_str($data['w_occupation_details']);
+        $w_education_details = sql_null_or_str($data['w_education_details'] ?? '');
+        $w_occupation_details = sql_null_or_str($data['w_occupation_details'] ?? '');
         $email = sql_null_or_str($data['email']);
         $pudavai = sql_null_or_str($data['pudavai']);
         $mobile_no = sql_null_or_str($data['mobile_no']);
         $permanent_address = sql_null_or_str($data['permanent_address']);
         $current_address = sql_null_or_str($data['current_address']);
-        $w_name = sql_null_or_str($data['w_name']);
+        $w_name = sql_null_or_str($data['w_name'] ?? '');
         
         // Handle wife's date of birth - check for separate date fields
         if (isset($data['w_dob']) && is_array($data['w_dob']) && isset($data['w_dob']['year']) && isset($data['w_dob']['month']) && isset($data['w_dob']['date']) && 
@@ -659,12 +661,12 @@ function update_family($id, $data) {
             }
         }
         
-        $w_blood_group = sql_null_or_int($data['w_blood_group']);
-        $w_qualification = sql_null_or_int($data['w_qualification']);
-        $w_occupation = sql_null_or_int($data['w_occupation']);
-        $w_kootam = sql_null_or_str($data['w_kootam']);
-        $w_temple = sql_null_or_str($data['w_temple']);
-        $w_email = sql_null_or_str($data['w_email']);
+        $w_blood_group = sql_null_or_int($data['w_blood_group'] ?? '');
+        $w_qualification = sql_null_or_int($data['w_qualification'] ?? '');
+        $w_occupation = sql_null_or_int($data['w_occupation'] ?? '');
+        $w_kootam = sql_null_or_str($data['w_kootam'] ?? '');
+        $w_temple = sql_null_or_str($data['w_temple'] ?? '');
+        $w_email = sql_null_or_str($data['w_email'] ?? '');
         $village = sql_null_or_str($data['village']);
         $taluk = sql_null_or_str($data['taluk']);
         $district = sql_null_or_str($data['district']);

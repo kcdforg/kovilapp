@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         'pudavai' => $_POST['pudavai'] ?? '',
         'remarks' => $_POST['remarks'] ?? '',
         'ic' => $_POST['ic'] ?? '',
+        'same_as_permanent' => isset($_POST['same_as_permanent']) ? 1 : 0,
         'created_by' => $_SESSION['user_id'] ?? 1,
         'created_date' => date('Y-m-d H:i:s')
     );
@@ -108,9 +109,6 @@ include('../includes/header.php');
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="h3 mb-0">Add New Member</h1>
             <div class="d-flex gap-2">
-                <a href="memberlist.php" class="btn btn-outline-primary">
-                    <i class="bi bi-list"></i> View List (Fluid Layout)
-                </a>
                 <a href="memberlist.php" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> Back to List
                 </a>
@@ -178,31 +176,6 @@ include('../includes/header.php');
                     </div>
                     
                     <div class="row mb-3">
-                        <label for="dob" class="col-sm-4 col-form-label">Date of Birth</label>
-                        <div class="col-sm-8">
-                            <input type="date" class="form-control" id="dob" name="dob">
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <label for="blood_group" class="col-sm-4 col-form-label">Blood Group</label>
-                        <div class="col-sm-8">
-                            <select class="form-select select2" id="blood_group" name="blood_group">
-                                <option value="">Select Blood Group</option>
-                                <?php
-                                $blood_groups = get_labels_by_type('blood_group');
-                                foreach ($blood_groups as $bg) {
-                                    echo "<option value='{$bg['id']}'>{$bg['display_name']}</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Right Column -->
-                <div class="col-md-6">
-                    <div class="row mb-3">
                         <label for="qualification" class="col-sm-4 col-form-label">Education</label>
                         <div class="col-sm-8">
                             <select class="form-select select2" id="qualification" name="qualification">
@@ -225,6 +198,47 @@ include('../includes/header.php');
                     </div>
                     
                     <div class="row mb-3">
+                        <label for="email" class="col-sm-4 col-form-label">Email Address</label>
+                        <div class="col-sm-8">
+                            <input type="email" class="form-control" id="email" name="email">
+                            <div class="invalid-feedback">Please enter a valid email address.</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Column -->
+                <div class="col-md-6">
+                    <div class="row mb-3">
+                        <label for="mobile_no" class="col-sm-4 col-form-label">Mobile Number *</label>
+                        <div class="col-sm-8">
+                            <input type="tel" class="form-control" id="mobile_no" name="mobile_no" required>
+                            <div class="invalid-feedback">Please enter a valid mobile number.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label for="dob" class="col-sm-4 col-form-label">Date of Birth</label>
+                        <div class="col-sm-8">
+                            <input type="date" class="form-control" id="dob" name="dob">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label for="blood_group" class="col-sm-4 col-form-label">Blood Group</label>
+                        <div class="col-sm-8">
+                            <select class="form-select select2" id="blood_group" name="blood_group">
+                                <option value="">Select Blood Group</option>
+                                <?php
+                                $blood_groups = get_labels_by_type('blood_group');
+                                foreach ($blood_groups as $bg) {
+                                    echo "<option value='{$bg['id']}'>{$bg['display_name']}</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
                         <label for="occupation" class="col-sm-4 col-form-label">Occupation</label>
                         <div class="col-sm-8">
                             <select class="form-select select2" id="occupation" name="occupation">
@@ -243,22 +257,6 @@ include('../includes/header.php');
                         <label for="occupation_details" class="col-sm-4 col-form-label">Occupation Details</label>
                         <div class="col-sm-8">
                             <input type="text" class="form-control" id="occupation_details" name="occupation_details">
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <label for="email" class="col-sm-4 col-form-label">Email Address</label>
-                        <div class="col-sm-8">
-                            <input type="email" class="form-control" id="email" name="email">
-                            <div class="invalid-feedback">Please enter a valid email address.</div>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <label for="mobile_no" class="col-sm-4 col-form-label">Mobile Number *</label>
-                        <div class="col-sm-8">
-                            <input type="tel" class="form-control" id="mobile_no" name="mobile_no" required>
-                            <div class="invalid-feedback">Please enter a valid mobile number.</div>
                         </div>
                     </div>
                 </div>
@@ -449,10 +447,16 @@ include('../includes/header.php');
         <!-- Current Address -->
         <div class="col-md-6">
             <div class="card h-100">
-                <div class="card-header bg-warning text-dark">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">
                         <i class="bi bi-geo-alt-fill"></i> CURRENT ADDRESS
                     </h5>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sameAsPermanent" name="same_as_permanent" value="1" onchange="toggleCurrentAddress()">
+                        <label class="form-check-label" for="sameAsPermanent">
+                            Same as Permanent
+                        </label>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row mb-3">
@@ -607,6 +611,38 @@ include('../includes/header.php');
         });
     }, false);
 })();
+
+// Toggle current address fields based on checkbox
+function toggleCurrentAddress() {
+    const checkbox = document.getElementById('sameAsPermanent');
+    const currentAddressFields = [
+        'current_address', 'c_village', 'c_taluk', 'c_district', 
+        'c_state', 'c_country', 'c_pincode'
+    ];
+    
+    if (checkbox.checked) {
+        // Copy permanent address to current address
+        document.getElementById('current_address').value = document.getElementById('permanent_address').value;
+        document.getElementById('c_village').value = document.getElementById('village').value;
+        document.getElementById('c_taluk').value = document.getElementById('taluk').value;
+        document.getElementById('c_district').value = document.getElementById('district').value;
+        document.getElementById('c_state').value = document.getElementById('state').value;
+        document.getElementById('c_country').value = document.getElementById('country').value;
+        document.getElementById('c_pincode').value = document.getElementById('pincode').value;
+        
+        // Disable current address fields
+        currentAddressFields.forEach(fieldId => {
+            document.getElementById(fieldId).disabled = true;
+            document.getElementById(fieldId).style.backgroundColor = '#e9ecef';
+        });
+    } else {
+        // Enable current address fields
+        currentAddressFields.forEach(fieldId => {
+            document.getElementById(fieldId).disabled = false;
+            document.getElementById(fieldId).style.backgroundColor = '';
+        });
+    }
+}
 
 // Initialize Select2
 $(document).ready(function() {
