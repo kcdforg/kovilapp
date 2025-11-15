@@ -507,7 +507,7 @@ include('../includes/header.php');
                         <input class="form-check-input" type="checkbox" id="sameAsPermanent" name="same_as_permanent" value="1" 
                                <?php echo (isset($row['same_as_permanent']) && $row['same_as_permanent'] == 1) ? 'checked' : ''; ?>
                                onchange="toggleCurrentAddress()">
-                        <label class="form-check-label" for="sameAsPermanent">
+                        <label class="form-check-label text-white" for="sameAsPermanent">
                             Same as Permanent
                         </label>
                     </div>

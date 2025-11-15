@@ -102,6 +102,14 @@ include('../includes/header.php');
         margin-right: 1rem;
     }
 }
+
+/* Remove valid icons from form validation */
+.was-validated .form-control:valid,
+.was-validated .form-select:valid {
+    border-color: #ced4da;
+    background-image: none;
+    padding-right: 0.75rem;
+}
 </style>
 
 <div class="row fluid-with-margins">
@@ -141,7 +149,13 @@ include('../includes/header.php');
 
 <div class="row fluid-with-margins">
     <div class="col-12">
-<form method="POST" class="needs-validation" novalidate>
+<form method="POST" class="needs-validation" novalidate id="addMemberForm">
+    <!-- Validation Errors Summary -->
+    <div id="validationSummary" class="alert alert-danger d-none mb-4" role="alert">
+        <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Please correct the following errors:</h5>
+        <ul id="validationErrorList" class="mb-0"></ul>
+    </div>
+    
     <!-- Husband Information -->
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
@@ -276,9 +290,10 @@ include('../includes/header.php');
                 <!-- Left Column -->
                 <div class="col-md-6">
                     <div class="row mb-3">
-                        <label for="w_name" class="col-sm-4 col-form-label">Name</label>
+                        <label for="w_name" class="col-sm-4 col-form-label">Name *</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="w_name" name="w_name">
+                            <input type="text" class="form-control" id="w_name" name="w_name" required>
+                            <div class="invalid-feedback">Please enter wife's name.</div>
                         </div>
                     </div>
                     
@@ -453,7 +468,7 @@ include('../includes/header.php');
                     </h5>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="sameAsPermanent" name="same_as_permanent" value="1" onchange="toggleCurrentAddress()">
-                        <label class="form-check-label" for="sameAsPermanent">
+                        <label class="form-check-label text-white" for="sameAsPermanent">
                             Same as Permanent
                         </label>
                     </div>
@@ -595,20 +610,55 @@ include('../includes/header.php');
 </div>
 
 <script>
-// Form validation
+// Form validation with error summary
 (function() {
     'use strict';
     window.addEventListener('load', function() {
-        var forms = document.getElementsByClassName('needs-validation');
-        var validation = Array.prototype.filter.call(forms, function(form) {
-            form.addEventListener('submit', function(event) {
-                if (form.checkValidity() === false) {
-                    event.preventDefault();
-                    event.stopPropagation();
+        var form = document.getElementById('addMemberForm');
+        var validationSummary = document.getElementById('validationSummary');
+        var errorList = document.getElementById('validationErrorList');
+        
+        form.addEventListener('submit', function(event) {
+            if (form.checkValidity() === false) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Collect all invalid fields
+                var invalidFields = form.querySelectorAll(':invalid');
+                var errors = [];
+                
+                invalidFields.forEach(function(field) {
+                    var label = form.querySelector('label[for="' + field.id + '"]');
+                    var fieldName = label ? label.textContent.replace('*', '').trim() : field.name;
+                    
+                    if (field.validity.valueMissing) {
+                        errors.push(fieldName + ' is required');
+                    } else if (field.validity.typeMismatch) {
+                        errors.push(fieldName + ' format is invalid');
+                    } else if (field.validity.patternMismatch) {
+                        errors.push(fieldName + ' format is invalid');
+                    }
+                });
+                
+                // Display error summary
+                if (errors.length > 0) {
+                    errorList.innerHTML = '';
+                    errors.forEach(function(error) {
+                        var li = document.createElement('li');
+                        li.textContent = error;
+                        errorList.appendChild(li);
+                    });
+                    validationSummary.classList.remove('d-none');
+                    
+                    // Scroll to top
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
-                form.classList.add('was-validated');
-            }, false);
-        });
+            } else {
+                validationSummary.classList.add('d-none');
+            }
+            
+            form.classList.add('was-validated');
+        }, false);
     }, false);
 })();
 

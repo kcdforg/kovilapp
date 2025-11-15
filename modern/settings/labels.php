@@ -4,8 +4,45 @@ check_login();
 
 include('../includes/header.php');
 
-// Get all labels
-$result = get_labels();
+// Filter by type
+$filter_type = isset($_GET['type']) ? (int)$_GET['type'] : 0;
+
+// Pagination settings
+$per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 20;
+// Validate per_page value
+if (!in_array($per_page, [10, 20, 50, 100])) {
+    $per_page = 20;
+}
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $per_page;
+
+// Get labels with pagination
+global $con, $tbl_labels;
+
+// Build WHERE clause
+$where = "type != 0";
+if ($filter_type > 0) {
+    $where .= " AND type = $filter_type";
+}
+
+// Get total count
+$count_sql = "SELECT COUNT(*) as total FROM $tbl_labels WHERE $where";
+$count_result = mysqli_query($con, $count_sql);
+$count_row = mysqli_fetch_assoc($count_result);
+$total_records = $count_row['total'];
+$total_pages = ceil($total_records / $per_page);
+
+// Get paginated labels
+$tps = get_types();
+$sql = "SELECT * FROM $tbl_labels WHERE $where ORDER BY type, `order` LIMIT $per_page OFFSET $offset";
+$query_result = mysqli_query($con, $sql);
+
+$result = array();
+while ($row = mysqli_fetch_array($query_result)) {
+    $row['type_name'] = $tps[$row['type']]['display_name'] ?? '';
+    $row['type_slug'] = $tps[$row['type']]['slug'] ?? '';
+    $result[] = $row;
+}
 
 // Handle success/error messages
 $success_message = '';
@@ -22,15 +59,56 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
 
 <div class="container-fluid mt-4">
     <div class="row">
-        <div class="col-12">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-filter"></i> Filter by Type</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="?per_page=<?php echo $per_page; ?>" class="list-group-item list-group-item-action <?php echo ($filter_type == 0) ? 'active' : ''; ?>">
+                        <i class="bi bi-grid"></i> All Types
+                        <span class="badge bg-secondary float-end"><?php echo array_sum(array_map(function($t) use ($con, $tbl_labels) {
+                            $sql = "SELECT COUNT(*) as cnt FROM $tbl_labels WHERE type = " . $t['id'];
+                            $r = mysqli_query($con, $sql);
+                            $row = mysqli_fetch_assoc($r);
+                            return $row['cnt'];
+                        }, $tps)); ?></span>
+                    </a>
+                    <?php foreach ($tps as $type_id => $type): ?>
+                        <?php
+                        // Get count for this type
+                        $type_count_sql = "SELECT COUNT(*) as cnt FROM $tbl_labels WHERE type = $type_id";
+                        $type_count_result = mysqli_query($con, $type_count_sql);
+                        $type_count_row = mysqli_fetch_assoc($type_count_result);
+                        $type_count = $type_count_row['cnt'];
+                        ?>
+                        <a href="?type=<?php echo $type_id; ?>&per_page=<?php echo $per_page; ?>" 
+                           class="list-group-item list-group-item-action <?php echo ($filter_type == $type_id) ? 'active' : ''; ?>">
+                            <?php echo htmlspecialchars($type['display_name']); ?>
+                            <span class="badge bg-secondary float-end"><?php echo $type_count; ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="bi bi-tags"></i> Labels Management
+                        <span class="badge bg-primary ms-2"><?php echo $total_records; ?> Total</span>
                     </h5>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLabelModal">
-                        <i class="bi bi-plus-circle"></i> Add Label
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTypeModal">
+                            <i class="bi bi-plus-circle"></i> Add Type
+                        </button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLabelModal">
+                            <i class="bi bi-plus-circle"></i> Add Label
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <?php if ($success_message): ?>
@@ -46,6 +124,58 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     <?php endif; ?>
+                    
+                    <!-- Pagination at top (above table) -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <!-- Records per page selector -->
+                        <div class="d-flex align-items-center">
+                            <label class="me-2 mb-0">Show:</label>
+                            <select class="form-select form-select-sm" style="width: auto;" onchange="window.location.href='?page=1&per_page=' + this.value + '&type=<?php echo $filter_type; ?>'">
+                                <option value="10" <?php echo ($per_page == 10) ? 'selected' : ''; ?>>10</option>
+                                <option value="20" <?php echo ($per_page == 20) ? 'selected' : ''; ?>>20</option>
+                                <option value="50" <?php echo ($per_page == 50) ? 'selected' : ''; ?>>50</option>
+                                <option value="100" <?php echo ($per_page == 100) ? 'selected' : ''; ?>>100</option>
+                            </select>
+                            <span class="ms-2 text-muted">records per page</span>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <?php if ($total_pages > 1): ?>
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination mb-0">
+                                    <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="?page=<?php echo $page - 1; ?>&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>">Previous</a>
+                                    </li>
+                                    <?php
+                                    $start_page = max(1, $page - 2);
+                                    $end_page = min($total_pages, $page + 2);
+                                    
+                                    if ($start_page > 1): ?>
+                                        <li class="page-item"><a class="page-link" href="?page=1&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>">1</a></li>
+                                        <?php if ($start_page > 2): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        <?php endif;
+                                    endif;
+                                    
+                                    for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                        <li class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
+                                            <a class="page-link" href="?page=<?php echo $i; ?>&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>"><?php echo $i; ?></a>
+                                        </li>
+                                    <?php endfor;
+                                    
+                                    if ($end_page < $total_pages): ?>
+                                        <?php if ($end_page < $total_pages - 1): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        <?php endif; ?>
+                                        <li class="page-item"><a class="page-link" href="?page=<?php echo $total_pages; ?>&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>"><?php echo $total_pages; ?></a></li>
+                                    <?php endif; ?>
+                                    <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="?page=<?php echo $page + 1; ?>&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        <?php endif; ?>
+                    </div>
                     
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -115,8 +245,85 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination at bottom right -->
+                    <?php if ($total_pages > 1): ?>
+                        <div class="d-flex justify-content-end mt-3">
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination mb-0">
+                                    <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="?page=<?php echo $page - 1; ?>&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>">Previous</a>
+                                    </li>
+                                    <?php
+                                    $start_page = max(1, $page - 2);
+                                    $end_page = min($total_pages, $page + 2);
+                                    
+                                    if ($start_page > 1): ?>
+                                        <li class="page-item"><a class="page-link" href="?page=1&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>">1</a></li>
+                                        <?php if ($start_page > 2): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        <?php endif;
+                                    endif;
+                                    
+                                    for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                        <li class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
+                                            <a class="page-link" href="?page=<?php echo $i; ?>&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>"><?php echo $i; ?></a>
+                                        </li>
+                                    <?php endfor;
+                                    
+                                    if ($end_page < $total_pages): ?>
+                                        <?php if ($end_page < $total_pages - 1): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        <?php endif; ?>
+                                        <li class="page-item"><a class="page-link" href="?page=<?php echo $total_pages; ?>&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>"><?php echo $total_pages; ?></a></li>
+                                    <?php endif; ?>
+                                    <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="?page=<?php echo $page + 1; ?>&per_page=<?php echo $per_page; ?>&type=<?php echo $filter_type; ?>">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Type Modal -->
+<div class="modal fade" id="addTypeModal" tabindex="-1" aria-labelledby="addTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTypeModalLabel">
+                    <i class="bi bi-plus-circle"></i> Add New Type
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="add_type.php" method="POST">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Type Name</label>
+                            <input type="text" class="form-control" name="display_name" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Slug</label>
+                            <input type="text" class="form-control" name="slug" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Order</label>
+                            <input type="number" class="form-control" name="order" value="0" min="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Add Type
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

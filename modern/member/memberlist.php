@@ -48,11 +48,15 @@ if (!empty($_GET['filter_mobile'])) {
     $params[] = '%' . $_GET['filter_mobile'] . '%';
     $param_types .= 's';
 }
-if (!empty($_GET['filter_permanent_address'])) {
-    $where[] = "(CONVERT(village USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(taluk USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(district USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(state USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(pincode USING utf8) COLLATE utf8_general_ci LIKE ?)";
-    $search_term = '%' . $_GET['filter_permanent_address'] . '%';
-    $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term, $search_term]);
-    $param_types .= 'sssss';
+if (!empty($_GET['filter_father_name'])) {
+    $where[] = "CONVERT(father_name USING utf8) COLLATE utf8_general_ci LIKE ?";
+    $params[] = '%' . $_GET['filter_father_name'] . '%';
+    $param_types .= 's';
+}
+if (!empty($_GET['filter_village'])) {
+    $where[] = "CONVERT(village USING utf8) COLLATE utf8_general_ci LIKE ?";
+    $params[] = '%' . $_GET['filter_village'] . '%';
+    $param_types .= 's';
 }
 if (!empty($_GET['filter_current_address'])) {
     $where[] = "(CONVERT(c_village USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(c_taluk USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(c_district USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(c_state USING utf8) COLLATE utf8_general_ci LIKE ? OR CONVERT(c_pincode USING utf8) COLLATE utf8_general_ci LIKE ?)";
@@ -493,7 +497,8 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                 <th id="col-member-id">Member ID</th>
                                 <th id="col-name">Name</th>
                                 <th id="col-mobile">Mobile</th>
-                                <th id="col-permanent-address">Permanent Address</th>
+                                <th id="col-father-name">Father's Name</th>
+                                <th id="col-village">Village</th>
                                 <th id="col-current-address">Current Address</th>
                                 <th id="col-kattalai">Kattalai</th>
                                 <th id="col-actions">Actions</th>
@@ -520,9 +525,15 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                 </th>
                                 <th>
                                     <input type="text" class="form-control form-control-sm table-filter" 
-                                           name="filter_permanent_address" 
-                                           placeholder="Filter Address..." 
-                                           value="<?php echo isset($_GET['filter_permanent_address']) ? htmlspecialchars($_GET['filter_permanent_address']) : ''; ?>">
+                                           name="filter_father_name" 
+                                           placeholder="Filter Father..." 
+                                           value="<?php echo isset($_GET['filter_father_name']) ? htmlspecialchars($_GET['filter_father_name']) : ''; ?>">
+                                </th>
+                                <th>
+                                    <input type="text" class="form-control form-control-sm table-filter" 
+                                           name="filter_village" 
+                                           placeholder="Filter Village..." 
+                                           value="<?php echo isset($_GET['filter_village']) ? htmlspecialchars($_GET['filter_village']) : ''; ?>">
                                 </th>
                                 <th>
                                     <input type="text" class="form-control form-control-sm table-filter" 
@@ -543,7 +554,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                     </select>
                                 </th>
                                 <th>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearTableFilters">
+                                    <button type="button" class="btn btn-sm btn-light" id="clearTableFilters">
                                         <i class="bi bi-x-circle"></i> Clear
                                     </button>
                                 </th>
@@ -599,7 +610,11 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                                     </div>
                                                 <?php endif; ?>
                                                 <div>
-                                                    <div class="member-name"><?php echo htmlspecialchars($family['name']); ?></div>
+                                                    <div class="member-name">
+                                                        <a href="viewmember.php?id=<?php echo $family['id']; ?>" class="text-decoration-none">
+                                                            <?php echo htmlspecialchars($family['name']); ?>
+                                                        </a>
+                                                    </div>
                                                     <?php if ($family['w_name']): ?>
                                                         <div class="member-spouse">Spouse: <?php echo htmlspecialchars($family['w_name']); ?></div>
                                                     <?php endif; ?>
@@ -614,34 +629,38 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php 
-                                            $permanent_address = [];
-                                            if ($family['village']) $permanent_address[] = $family['village'];
-                                            if ($family['taluk']) $permanent_address[] = $family['taluk'];
-                                            if ($family['district']) $permanent_address[] = $family['district'];
-                                            if ($family['state']) $permanent_address[] = $family['state'];
-                                            if ($family['pincode']) $permanent_address[] = $family['pincode'];
-                                            
-                                            if (!empty($permanent_address)): ?>
-                                                <small><?php echo htmlspecialchars(implode(', ', $permanent_address)); ?></small>
+                                            <?php if (!empty($family['father_name'])): ?>
+                                                <?php echo htmlspecialchars($family['father_name']); ?>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($family['village'])): ?>
+                                                <?php echo htmlspecialchars($family['village']); ?>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php 
-                                            $current_address = [];
-                                            if ($family['c_village']) $current_address[] = $family['c_village'];
-                                            if ($family['c_taluk']) $current_address[] = $family['c_taluk'];
-                                            if ($family['c_district']) $current_address[] = $family['c_district'];
-                                            if ($family['c_state']) $current_address[] = $family['c_state'];
-                                            if ($family['c_pincode']) $current_address[] = $family['c_pincode'];
-                                            
-                                            if (!empty($current_address)): ?>
-                                                <small><?php echo htmlspecialchars(implode(', ', $current_address)); ?></small>
-                                            <?php else: ?>
-                                                <span class="text-muted">-</span>
-                                            <?php endif; ?>
+                                            // Check if same as permanent
+                                            if (isset($family['same_as_permanent']) && $family['same_as_permanent'] == 1) {
+                                                // Display permanent address
+                                                if (!empty($family['permanent_address'])): ?>
+                                                    <small><?php echo htmlspecialchars($family['permanent_address']); ?></small>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif;
+                                            } else {
+                                                // Display current address
+                                                if (!empty($family['current_address'])): ?>
+                                                    <small><?php echo htmlspecialchars($family['current_address']); ?></small>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif;
+                                            }
+                                            ?>
                                         </td>
                                         <td>
                                             <?php if ($kattalai_name): ?>

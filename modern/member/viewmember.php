@@ -443,10 +443,10 @@ include('../includes/header.php');
                                             </h6>
                                             <div>
                                                 <button class="btn btn-success btn-sm me-2" onclick="addson()">
-                                                    <i class="bi bi-person-plus"></i> Add Son
+                                                        <i class="bi bi-person-plus"></i> Add Son
                                                 </button>
                                                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addDaughterModal">
-                                                    <i class="bi bi-person-plus"></i> Add Daughter
+                                                        <i class="bi bi-person-plus"></i> Add Daughter
                                                 </button>
                                             </div>
                                         </div>
@@ -539,6 +539,9 @@ include('../includes/header.php');
                                                                                     <a href="viewmember.php?id=<?php echo $v['fam_id']; ?>" class="btn btn-sm btn-outline-info ms-2">
                                                                                         <i class="bi bi-eye"></i> View Family
                                                                                     </a>
+                                                                                        <button class="btn btn-sm btn-outline-danger ms-1" onclick="unlinkFamily(<?php echo $v['id']; ?>)">
+                                                                                            <i class="bi bi-link-45deg"></i> Unlink
+                                                                                        </button>
                                                                                     <?php endif; ?>
                                                                                 <?php endif; ?>
                                                                             <?php endif; ?>
@@ -649,7 +652,7 @@ include('../includes/header.php');
                                                 <div class="data-value">
                                                     <?php 
                                                     if (isset($row['same_as_permanent']) && $row['same_as_permanent'] == 1) {
-                                                        echo '<span class="badge bg-info text-dark">Same as Permanent</span>';
+                                                        echo htmlspecialchars($row['permanent_address'] ?? '-');
                                                     } else {
                                                         echo htmlspecialchars($row['current_address'] ?? '-');
                                                     }
@@ -3435,5 +3438,336 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+<!-- Unlink Family Modal -->
+<div class="modal fade" id="unlinkFamilyModal" tabindex="-1" aria-labelledby="unlinkFamilyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="unlinkFamilyModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirm Unlink
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="unlinkChildId">
+                
+                <div id="unlinkConfirmSection">
+                    <p>Are you sure you want to unlink this family?</p>
+                    <p class="text-danger mb-0">
+                        <i class="bi bi-exclamation-circle"></i> 
+                        This will remove the link between the child and the family record.
+                    </p>
+                </div>
+                
+                <div id="unlinkSuccessMessage" class="d-none">
+                    <div class="alert alert-success">
+                        <h6 class="alert-heading"><i class="bi bi-check-circle"></i> Success!</h6>
+                        <p class="mb-0">Family unlinked successfully!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelUnlinkBtn">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmUnlinkBtn" onclick="confirmUnlinkFamily()">
+                    <i class="bi bi-link-45deg"></i> Unlink Family
+                </button>
+                <button type="button" class="btn btn-primary d-none" id="okUnlinkBtn" onclick="closeUnlinkModal()">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Link Family Modal -->
+<div class="modal fade" id="linkFamilyModal" tabindex="-1" aria-labelledby="linkFamilyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="linkFamilyModalLabel">
+                    <i class="bi bi-link"></i> Link to Existing Family
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="linkChildId">
+                
+                <div id="searchSection">
+                    <div class="mb-3">
+                        <label for="linkMemberId" class="form-label">Enter Member ID</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="linkMemberId" placeholder="Enter Member ID">
+                            <button class="btn btn-primary" type="button" onclick="searchMemberById()">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="memberPreview" class="d-none">
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading">Member Details:</h6>
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <td><strong>Name:</strong></td>
+                                <td id="previewName"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Father's Name:</strong></td>
+                                <td id="previewFatherName"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mother's Name:</strong></td>
+                                <td id="previewMotherName"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Village:</strong></td>
+                                <td id="previewVillage"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div id="memberNotFound" class="alert alert-danger d-none">
+                    Member not found with this ID.
+                </div>
+                
+                <div id="linkSuccessMessage" class="d-none">
+                    <div class="alert alert-success">
+                        <h6 class="alert-heading"><i class="bi bi-check-circle"></i> Success!</h6>
+                        <p class="mb-0">Family linked successfully!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelLinkBtn">Cancel</button>
+                <button type="button" class="btn btn-primary d-none" id="confirmLinkBtn" onclick="confirmLinkFamily()">
+                    <i class="bi bi-check-circle"></i> Confirm Link
+                </button>
+                <button type="button" class="btn btn-primary d-none" id="okLinkBtn" onclick="closeLinkModal()">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedFamilyId = null;
+
+function linkfamily(childId) {
+    document.getElementById('linkChildId').value = childId;
+    document.getElementById('linkMemberId').value = '';
+    document.getElementById('searchSection').classList.remove('d-none');
+    document.getElementById('memberPreview').classList.add('d-none');
+    document.getElementById('memberNotFound').classList.add('d-none');
+    document.getElementById('confirmLinkBtn').classList.add('d-none');
+    selectedFamilyId = null;
+    
+    new bootstrap.Modal(document.getElementById('linkFamilyModal')).show();
+}
+
+function searchMemberById() {
+    const memberId = document.getElementById('linkMemberId').value.trim();
+    
+    if (!memberId) {
+        alert('Please enter a Member ID');
+        return;
+    }
+    
+    // Search for member
+    fetch('search_member_by_id.php?member_id=' + encodeURIComponent(memberId))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show member preview and hide search section
+                document.getElementById('previewName').textContent = data.member.name || '-';
+                document.getElementById('previewFatherName').textContent = data.member.father_name || '-';
+                document.getElementById('previewMotherName').textContent = data.member.mother_name || '-';
+                document.getElementById('previewVillage').textContent = data.member.village || '-';
+                
+                document.getElementById('searchSection').classList.add('d-none');
+                document.getElementById('memberPreview').classList.remove('d-none');
+                document.getElementById('memberNotFound').classList.add('d-none');
+                document.getElementById('confirmLinkBtn').classList.remove('d-none');
+                
+                selectedFamilyId = data.member.id;
+            } else {
+                document.getElementById('memberPreview').classList.add('d-none');
+                document.getElementById('memberNotFound').classList.remove('d-none');
+                document.getElementById('confirmLinkBtn').classList.add('d-none');
+                selectedFamilyId = null;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error searching for member');
+        });
+}
+
+function confirmLinkFamily() {
+    const childId = document.getElementById('linkChildId').value;
+    
+    if (!selectedFamilyId) {
+        showModalMessage('Please search and select a member first', 'warning');
+        return;
+    }
+    
+    // Disable button and show loading
+    const confirmBtn = document.getElementById('confirmLinkBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Linking...';
+    
+    // Link child to family
+    fetch('link_child_to_family.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'child_id=' + childId + '&family_id=' + selectedFamilyId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Hide all sections and show success message
+            document.getElementById('searchSection').classList.add('d-none');
+            document.getElementById('memberPreview').classList.add('d-none');
+            document.getElementById('memberNotFound').classList.add('d-none');
+            document.getElementById('linkSuccessMessage').classList.remove('d-none');
+            
+            // Hide confirm button and cancel button, show OK button
+            document.getElementById('confirmLinkBtn').classList.add('d-none');
+            document.getElementById('cancelLinkBtn').classList.add('d-none');
+            document.getElementById('okLinkBtn').classList.remove('d-none');
+        } else {
+            showModalMessage('Error: ' + data.message, 'danger');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Link';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showModalMessage('Error linking family', 'danger');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Link';
+    });
+}
+
+function closeLinkModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('linkFamilyModal'));
+    modal.hide();
+    location.reload();
+}
+
+function unlinkFamily(childId) {
+    document.getElementById('unlinkChildId').value = childId;
+    document.getElementById('unlinkConfirmSection').classList.remove('d-none');
+    document.getElementById('unlinkSuccessMessage').classList.add('d-none');
+    document.getElementById('cancelUnlinkBtn').classList.remove('d-none');
+    document.getElementById('confirmUnlinkBtn').classList.remove('d-none');
+    document.getElementById('okUnlinkBtn').classList.add('d-none');
+    
+    new bootstrap.Modal(document.getElementById('unlinkFamilyModal')).show();
+}
+
+function confirmUnlinkFamily() {
+    const childId = document.getElementById('unlinkChildId').value;
+    const confirmBtn = document.getElementById('confirmUnlinkBtn');
+    
+    // Disable button and show loading
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Unlinking...';
+    
+    fetch('unlink_child_from_family.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'child_id=' + childId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Hide confirm section and show success message
+            document.getElementById('unlinkConfirmSection').classList.add('d-none');
+            document.getElementById('unlinkSuccessMessage').classList.remove('d-none');
+            
+            // Hide confirm and cancel buttons, show OK button
+            document.getElementById('confirmUnlinkBtn').classList.add('d-none');
+            document.getElementById('cancelUnlinkBtn').classList.add('d-none');
+            document.getElementById('okUnlinkBtn').classList.remove('d-none');
+        } else {
+            showErrorToast('Error: ' + data.message);
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-link-45deg"></i> Unlink Family';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorToast('Error unlinking family');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="bi bi-link-45deg"></i> Unlink Family';
+    });
+}
+
+function closeUnlinkModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('unlinkFamilyModal'));
+    modal.hide();
+    location.reload();
+}
+
+function showModalMessage(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-2`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const modalBody = document.querySelector('#linkFamilyModal .modal-body');
+    const existingAlert = modalBody.querySelector('.alert');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+    modalBody.insertBefore(alertDiv, modalBody.firstChild);
+}
+
+function showSuccessToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed top-0 end-0 p-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-success text-white">
+                <i class="bi bi-check-circle me-2"></i>
+                <strong class="me-auto">Success</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">${message}</div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function showErrorToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed top-0 end-0 p-3';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong class="me-auto">Error</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">${message}</div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+</script>
 
 <?php include('../includes/footer.php'); ?>

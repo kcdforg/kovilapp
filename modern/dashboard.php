@@ -9,12 +9,54 @@ $total_members = 0;
 $total_users = 0;
 $total_horoscopes = 0;
 $total_donations = 0;
+$total_children = 0;
+$total_unmarried = 0;
+$unmarried_male = 0;
+$unmarried_female = 0;
 
 // Get family count (this should exist)
 try {
     $total_members = count_family();
 } catch (Exception $e) {
     $total_members = 0;
+}
+
+// Get children statistics
+try {
+    global $con, $tbl_child;
+    
+    // Total children
+    $result = mysqli_query($con, "SELECT COUNT(*) as count FROM $tbl_child");
+    if ($result) {
+        $row = mysqli_fetch_assoc($result);
+        $total_children = $row['count'];
+    }
+    
+    // Total unmarried children
+    $result = mysqli_query($con, "SELECT COUNT(*) as count FROM $tbl_child WHERE c_marital_status = 'no' OR c_marital_status = 'No'");
+    if ($result) {
+        $row = mysqli_fetch_assoc($result);
+        $total_unmarried = $row['count'];
+    }
+    
+    // Unmarried male children
+    $result = mysqli_query($con, "SELECT COUNT(*) as count FROM $tbl_child WHERE (c_marital_status = 'no' OR c_marital_status = 'No') AND (c_gender = 'male' OR c_gender = 'Male')");
+    if ($result) {
+        $row = mysqli_fetch_assoc($result);
+        $unmarried_male = $row['count'];
+    }
+    
+    // Unmarried female children
+    $result = mysqli_query($con, "SELECT COUNT(*) as count FROM $tbl_child WHERE (c_marital_status = 'no' OR c_marital_status = 'No') AND (c_gender = 'female' OR c_gender = 'Female')");
+    if ($result) {
+        $row = mysqli_fetch_assoc($result);
+        $unmarried_female = $row['count'];
+    }
+} catch (Exception $e) {
+    $total_children = 0;
+    $total_unmarried = 0;
+    $unmarried_male = 0;
+    $unmarried_female = 0;
 }
 
 // Check if users table exists and get count
@@ -145,39 +187,58 @@ include('includes/header.php');
             </div>
         </div>
     </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="row mb-4 fluid-with-margins">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-lightning-fill text-warning"></i> Quick Actions
-                </h5>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card" style="background: linear-gradient(135deg, #6f42c1, #5a32a3);">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stats-number"><?php echo $total_children; ?></div>
+                    <div class="stats-label">Total Children</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="bi bi-person-fill"></i>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <a href="member/addmember.php" class="btn btn-primary w-100">
-                            <i class="bi bi-person-plus"></i> Add Member
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="user/adduser.php" class="btn btn-success w-100">
-                            <i class="bi bi-person-badge"></i> Add User
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="matrimony/addhoroscope.php" class="btn btn-danger w-100">
-                            <i class="bi bi-heart"></i> Add Horoscope
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="donation/adddonation.php" class="btn btn-warning w-100">
-                            <i class="bi bi-gift"></i> Add Donation
-                        </a>
-                    </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card" style="background: linear-gradient(135deg, #0dcaf0, #0aa2c0);">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stats-number"><?php echo $total_unmarried; ?></div>
+                    <div class="stats-label">Total Unmarried</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="bi bi-person-hearts"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card" style="background: linear-gradient(135deg, #20c997, #198754);">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stats-number"><?php echo $unmarried_male; ?></div>
+                    <div class="stats-label">Unmarried Male</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="bi bi-gender-male"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card" style="background: linear-gradient(135deg, #fd7e14, #dc6502);">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stats-number"><?php echo $unmarried_female; ?></div>
+                    <div class="stats-label">Unmarried Female</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="bi bi-gender-female"></i>
                 </div>
             </div>
         </div>
@@ -186,6 +247,63 @@ include('includes/header.php');
 
 <!-- Recent Activities -->
 <div class="row fluid-with-margins">
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-diagram-3 text-warning"></i> Statistics by Kootam
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Kootam</th>
+                                <th class="text-end">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            global $con, $tbl_family, $tbl_labels;
+                            
+                            // Get kootam statistics
+                            $kootam_sql = "SELECT f.w_kootam, l.display_name, COUNT(*) as count 
+                                          FROM $tbl_family f 
+                                          LEFT JOIN $tbl_labels l ON f.w_kootam = l.id 
+                                          WHERE f.deleted = 0 AND f.w_kootam IS NOT NULL AND f.w_kootam != '' AND f.w_kootam != 0
+                                          GROUP BY f.w_kootam, l.display_name 
+                                          ORDER BY count DESC";
+                            $kootam_result = mysqli_query($con, $kootam_sql);
+                            
+                            $total_kootam = 0;
+                            if ($kootam_result && mysqli_num_rows($kootam_result) > 0) {
+                                while ($kootam = mysqli_fetch_assoc($kootam_result)) {
+                                    $total_kootam += $kootam['count'];
+                                    echo "<tr>";
+                                    echo "<td>" . htmlspecialchars($kootam['display_name'] ?? 'Unknown') . "</td>";
+                                    echo "<td class='text-end'><span class='badge bg-primary'>" . $kootam['count'] . "</span></td>";
+                                    echo "</tr>";
+                                }
+                            } else {
+                                echo "<tr><td colspan='2' class='text-center text-muted'>No data available</td></tr>";
+                            }
+                            ?>
+                        </tbody>
+                        <?php if ($total_kootam > 0): ?>
+                        <tfoot>
+                            <tr class="table-active fw-bold">
+                                <td>Total</td>
+                                <td class="text-end"><span class="badge bg-success"><?php echo $total_kootam; ?></span></td>
+                            </tr>
+                        </tfoot>
+                        <?php endif; ?>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="col-lg-8 mb-4">
         <div class="card">
             <div class="card-header">
@@ -229,104 +347,7 @@ include('includes/header.php');
             </div>
         </div>
     </div>
-    
-    <div class="col-lg-4 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-graph-up text-success"></i> System Status
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>Database</span>
-                        <span class="text-success">Online</span>
-                    </div>
-                    <div class="progress">
-                        <div class="progress-bar bg-success" style="width: 100%"></div>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>Server Load</span>
-                        <span class="text-warning">Medium</span>
-                    </div>
-                    <div class="progress">
-                        <div class="progress-bar bg-warning" style="width: 65%"></div>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>Storage</span>
-                        <span class="text-info">75%</span>
-                    </div>
-                    <div class="progress">
-                        <div class="progress-bar bg-info" style="width: 75%"></div>
-                    </div>
-                </div>
-                
-                <div class="alert alert-info mb-0">
-                    <i class="bi bi-info-circle"></i>
-                    <small>System running smoothly. Last backup: <?php echo date('M d, Y H:i'); ?></small>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
-<!-- Charts Section (if needed) -->
-<div class="row fluid-with-margins">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-bar-chart text-primary"></i> Monthly Statistics
-                </h5>
-            </div>
-            <div class="card-body">
-                <canvas id="monthlyChart" width="400" height="200"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-// Sample chart data (you can replace with real data from PHP)
-document.addEventListener('DOMContentLoaded', function() {
-    const ctx = document.getElementById('monthlyChart').getContext('2d');
-    const monthlyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                label: 'New Members',
-                data: [12, 19, 3, 5, 2, 3],
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1
-            }, {
-                label: 'New Horoscopes',
-                data: [8, 15, 7, 12, 9, 11],
-                borderColor: 'rgb(255, 99, 132)',
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: true,
-                    text: 'Monthly Growth'
-                }
-            }
-        }
-    });
-});
-</script>
 
 <?php include('includes/footer.php'); ?> 

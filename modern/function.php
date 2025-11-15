@@ -156,29 +156,30 @@ function add_member($m) {
         $c_country = sql_null_or_str($m['c_country']);
         $kattalai = sql_null_or_int($m['kattalai']);
         $k_village = sql_null_or_str($m['k_village']);
-        $w_name = sql_null_or_str($m['w_name']);
-        $w_dob = sql_null_or_str($m['w_dob']);
-        $w_blood_group = sql_null_or_int($m['w_blood_group']);
-        $w_qualification = sql_null_or_int($m['w_qualification']);
-        $w_education_details = sql_null_or_str($m['w_education_details']);
-        $w_occupation_details = sql_null_or_str($m['w_occupation_details']);
-        $w_occupation = sql_null_or_int($m['w_occupation']);
-        $w_kootam = sql_null_or_int($m['w_kootam']);
-        $w_temple = sql_null_or_str($m['w_temple']);
-        $w_email = sql_null_or_str($m['w_email']);
+        $w_name = sql_null_or_str($m['w_name'] ?? '');
+        $w_dob = sql_null_or_str($m['w_dob'] ?? '');
+        $w_blood_group = sql_null_or_int($m['w_blood_group'] ?? '');
+        $w_qualification = sql_null_or_int($m['w_qualification'] ?? '');
+        $w_education_details = sql_null_or_str($m['w_education_details'] ?? '');
+        $w_occupation_details = sql_null_or_str($m['w_occupation_details'] ?? '');
+        $w_occupation = sql_null_or_int($m['w_occupation'] ?? '');
+        $w_kootam = sql_null_or_int($m['w_kootam'] ?? '');
+        $w_temple = sql_null_or_str($m['w_temple'] ?? '');
+        $w_email = sql_null_or_str($m['w_email'] ?? '');
         $ic = sql_null_or_str($m['ic']);
         $remarks = sql_null_or_str($m['remarks']);
         $pincode = sql_null_or_str($m['pincode']);
         $c_pincode = sql_null_or_str($m['c_pincode']);
         $state = sql_null_or_str($m['state']);
         $c_state = sql_null_or_str($m['c_state']);
+        $same_as_permanent = isset($m['same_as_permanent']) ? sql_null_or_int($m['same_as_permanent']) : 0;
         $join_date = sql_null_or_str(date('Y-m-d H:i:s'));
         $created_date = sql_null_or_str(date('Y-m-d H:i:s'));
         $created_by = isset($_SESSION['ID']) && is_numeric($_SESSION['ID']) ? (int)$_SESSION['ID'] : 'NULL';
         $deleted = 0;
 
-        $sql = "INSERT INTO `$tbl_family`(`name`,`father_name`, `mother_name`,`dob`, `blood_group`, `qualification`,  `occupation`, `email`, `pudavai`, `mobile_no`, `permanent_address`, `current_address`, `village`, `district`, `country`,`taluk`, `c_village`, `c_district`, `c_country`,`c_taluk`, `kattalai`,`k_village`, `w_name`, `w_dob`, `w_blood_group`, `w_qualification`,`w_occupation`, `w_kootam`, `w_temple`, `w_email`, `created_by`, `created_date`, `occupation_details`, `education_details`, `w_education_details`, `w_occupation_details`,`pincode`,`state`,`c_pincode`,`c_state`,`ic`, `deleted`)"
-                . " VALUES ($name,$father_name, $mother_name, $dob,  $blood_group, $qualification, $occupation, $email, $pudavai,$mobile_no,$permanent_address,$current_address, $village,$district,$country,$taluk,$c_village,$c_district,$c_country,$c_taluk, $kattalai,$k_village, $w_name,$w_dob,$w_blood_group,$w_qualification,$w_occupation,$w_kootam,$w_temple,$w_email,$created_by,$created_date,$education_details,$occupation_details,$w_education_details,$w_occupation_details,$c_pincode,$c_state,$pincode,$state,$ic, $deleted)";
+        $sql = "INSERT INTO `$tbl_family`(`name`,`father_name`, `mother_name`,`dob`, `blood_group`, `qualification`,  `occupation`, `email`, `pudavai`, `mobile_no`, `permanent_address`, `current_address`, `village`, `district`, `country`,`taluk`, `c_village`, `c_district`, `c_country`,`c_taluk`, `kattalai`,`k_village`, `w_name`, `w_dob`, `w_blood_group`, `w_qualification`,`w_occupation`, `w_kootam`, `w_temple`, `w_email`, `created_by`, `created_date`, `occupation_details`, `education_details`, `w_education_details`, `w_occupation_details`,`pincode`,`state`,`c_pincode`,`c_state`,`ic`, `same_as_permanent`, `deleted`)"
+                . " VALUES ($name,$father_name, $mother_name, $dob,  $blood_group, $qualification, $occupation, $email, $pudavai,$mobile_no,$permanent_address,$current_address, $village,$district,$country,$taluk,$c_village,$c_district,$c_country,$c_taluk, $kattalai,$k_village, $w_name,$w_dob,$w_blood_group,$w_qualification,$w_occupation,$w_kootam,$w_temple,$w_email,$created_by,$created_date,$education_details,$occupation_details,$w_education_details,$w_occupation_details,$c_pincode,$c_state,$pincode,$state,$ic, $same_as_permanent, $deleted)";
         //echo $sql
         if (mysqli_query($con, $sql)) {
             $id = mysqli_insert_id($con);
@@ -682,12 +683,13 @@ function update_family($id, $data) {
         $state = sql_null_or_str($data['state']);
         $c_state = sql_null_or_str($data['c_state']);
         $ic = sql_null_or_str($data['ic']);
+        $same_as_permanent = isset($data['same_as_permanent']) ? sql_null_or_int($data['same_as_permanent']) : 0;
         //$_2000_bk_no = $data['_2000_bk_no'];
         //$_2000_rc_no = $data['_2000_rc_no'];
         $remarks = sql_null_or_str($data['remarks']);
         // $member_name = $data['member_name'];
 
-        $sql = "UPDATE `$tbl_family` SET `name`=$name,`father_name`=$father_name,`mother_name`=$mother_name,`dob`=" . ($dob === 'NULL' ? 'NULL' : "'$dob'") . ",`blood_group`=$blood_group,`qualification`=$qualification,`occupation`=$occupation,`email`=$email,`pudavai`=$pudavai,`mobile_no`=$mobile_no,`permanent_address`=$permanent_address,`current_address`=$current_address,`country`=$country,`village`=$village,`district`=$district,`taluk`=$taluk,`c_village`=$c_village,`c_taluk`=$c_taluk,`c_district`=$c_district,`c_country`=$c_country,`kattalai`=$kattalai,`k_village`=$k_village,`w_name`=$w_name,`w_dob`=" . ($w_dob === 'NULL' ? 'NULL' : "'$w_dob'") . ",`w_blood_group`=$w_blood_group,`w_qualification`=$w_qualification,`w_occupation`=$w_occupation,`w_kootam`=$w_kootam,`w_temple`=$w_temple,`w_email`=$w_email,`ic`=$ic,`remarks`=$remarks,`education_details`=$education_details,`occupation_details`=$occupation_details,`w_education_details`=$w_education_details,`w_occupation_details`=$w_occupation_details,`pincode`=$pincode,`state`=$state,`c_pincode`=$c_pincode,`c_state`=$c_state WHERE `id` ='$id'";
+        $sql = "UPDATE `$tbl_family` SET `name`=$name,`father_name`=$father_name,`mother_name`=$mother_name,`dob`=" . ($dob === 'NULL' ? 'NULL' : "'$dob'") . ",`blood_group`=$blood_group,`qualification`=$qualification,`occupation`=$occupation,`email`=$email,`pudavai`=$pudavai,`mobile_no`=$mobile_no,`permanent_address`=$permanent_address,`current_address`=$current_address,`country`=$country,`village`=$village,`district`=$district,`taluk`=$taluk,`c_village`=$c_village,`c_taluk`=$c_taluk,`c_district`=$c_district,`c_country`=$c_country,`kattalai`=$kattalai,`k_village`=$k_village,`w_name`=$w_name,`w_dob`=" . ($w_dob === 'NULL' ? 'NULL' : "'$w_dob'") . ",`w_blood_group`=$w_blood_group,`w_qualification`=$w_qualification,`w_occupation`=$w_occupation,`w_kootam`=$w_kootam,`w_temple`=$w_temple,`w_email`=$w_email,`ic`=$ic,`remarks`=$remarks,`education_details`=$education_details,`occupation_details`=$occupation_details,`w_education_details`=$w_education_details,`w_occupation_details`=$w_occupation_details,`pincode`=$pincode,`state`=$state,`c_pincode`=$c_pincode,`c_state`=$c_state,`same_as_permanent`=$same_as_permanent WHERE `id` ='$id'";
 
         //echo $sql;
         return mysqli_query($con, $sql);
