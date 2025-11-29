@@ -259,7 +259,14 @@ function add_child($child) {
 
         $sql = "INSERT INTO `$tbl_child`(`fam_id`, `father_id`, `c_name`, `c_dob`, `c_gender`, `c_blood_group`, `c_marital_status`,`c_qualification`, `c_mobile_no`, `c_email`, `c_occupation`, `c_education_details`, `c_occupation_details`, `c_image`, `c_created_date`, `c_created_by`, `c_lastmodified_by`, `c_lastmodified_date`) 
 					VALUES (0, '$father_id', '$c_name', '$c_dob', '$c_gender', '$c_blood_group', '$c_marital_status', '$c_qualification', '$c_mobile_no', '$c_email', '$c_occupation', '$c_education_details', '$c_occupation_details', '$c_image', '$c_created_date', '$c_created_by', '$c_lastmodified_by', '$c_lastmodified_date')";
-        return mysqli_query($con, $sql);
+        $result = mysqli_query($con, $sql);
+        
+        // Regenerate family tree after adding child
+        if ($result && $father_id > 0) {
+            regenerateFamilyTree($father_id);
+        }
+        
+        return $result;
     }
 }
 
@@ -2025,5 +2032,239 @@ function display_hour($name = "birth_time", $default = '') {
             else
                 return $row['reg_no'] + 1;
         }
+
+// ============================================
+// FAMILY TREE FUNCTIONS
+// ============================================
+
+/**
+ * Generate a unified family tree starting from root ancestor
+ */
+function generateFamilyTree($root_family_id) {
+    return buildFamilyTreeNode($root_family_id);
+}
+
+/**
+ * Recursively build tree node for a family
+ */
+function buildFamilyTreeNode($family_id, &$visited = []) {
+    global $con, $tbl_child;
+    
+    // Prevent infinite loops - check if we've already visited this family
+    if (in_array($family_id, $visited)) {
+        return null;
+    }
+    
+    // Mark this family as visited
+    $visited[] = $family_id;
+    
+    // Limit tree depth to prevent memory issues
+    if (count($visited) > 100) {
+        return null;
+    }
+    
+    $node = [
+        'id' => $family_id,
+        'type' => 'family',
+        'children' => []
+    ];
+    
+    // Get all children of this family
+    $sql = "SELECT id, fam_id FROM $tbl_child WHERE father_id = ? ORDER BY c_dob ASC";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $family_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    while ($child = mysqli_fetch_assoc($result)) {
+        // Create a child node with child_id and fam_id
+        $child_node = [
+            'child_id' => $child['id'],
+            'fam_id' => $child['fam_id'],
+            'type' => 'child',
+            'children' => []
+        ];
+        
+        // If child has their own family, recurse to build their family tree
+        // But only if we haven't visited that family yet (prevent circular references)
+        if (!empty($child['fam_id']) && $child['fam_id'] > 0 && !in_array($child['fam_id'], $visited)) {
+            $family_node = buildFamilyTreeNode($child['fam_id'], $visited);
+            if ($family_node !== null) {
+                $child_node['children'][] = $family_node;
+            }
+        }
+        
+        $node['children'][] = $child_node;
+    }
+    
+    mysqli_stmt_close($stmt);
+    return $node;
+}
+
+/**
+ * Find the root ancestor of a family
+ */
+function findRootAncestor($family_id) {
+    global $con, $tbl_family;
+    
+    $current_id = $family_id;
+    $max_iterations = 20;
+    $iteration = 0;
+    
+    while ($iteration < $max_iterations) {
+        $sql = "SELECT parent_id FROM $tbl_family WHERE id = ?";
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, "i", $current_id);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        $row = mysqli_fetch_assoc($result);
+        mysqli_stmt_close($stmt);
+        
+        if (!$row || !$row['parent_id'] || $row['parent_id'] == 0) {
+            return $current_id;
+        }
+        
+        $current_id = $row['parent_id'];
+        $iteration++;
+    }
+    
+    return $family_id;
+}
+
+/**
+ * Save family tree to ftree table
+ */
+function saveFamilyTreeToDb($tree_structure) {
+    global $con, $tbl_ftree;
+    
+    $json_tree = json_encode($tree_structure, JSON_UNESCAPED_UNICODE);
+    
+    $sql = "INSERT INTO $tbl_ftree (tree_structure) VALUES (?)";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "s", $json_tree);
+    mysqli_stmt_execute($stmt);
+    $ftree_id = mysqli_insert_id($con);
+    mysqli_stmt_close($stmt);
+    
+    return $ftree_id;
+}
+
+/**
+ * Assign ftree_id to all families in the tree
+ */
+function assignFtreeIdToAllFamilies($tree, $ftree_id) {
+    global $con, $tbl_family;
+    
+    $node_type = $tree['type'] ?? 'family';
+    
+    // Only update if this is a family node
+    if ($node_type == 'family' && isset($tree['id'])) {
+        $sql = "UPDATE $tbl_family SET ftree_id = ? WHERE id = ?";
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, "ii", $ftree_id, $tree['id']);
+        mysqli_stmt_execute($stmt);
+        $affected = mysqli_stmt_affected_rows($stmt);
+        mysqli_stmt_close($stmt);
+        
+        // Debug log
+        error_log("Assigned ftree_id $ftree_id to family {$tree['id']}, affected rows: $affected");
+    }
+    
+    // Recurse through children
+    if (isset($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $child) {
+            assignFtreeIdToAllFamilies($child, $ftree_id);
+        }
+    }
+}
+
+/**
+ * Fetch family tree from database
+ */
+function fetchFamilyTree($ftree_id) {
+    global $con, $tbl_ftree;
+    
+    $sql = "SELECT tree_structure FROM $tbl_ftree WHERE id = ?";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $ftree_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    
+    if ($row) {
+        return json_decode($row['tree_structure'], true);
+    }
+    
+    return null;
+}
+
+/**
+ * Get ftree_id for a family
+ */
+function getFamilyTreeId($family_id) {
+    global $con, $tbl_family;
+    
+    $sql = "SELECT ftree_id FROM $tbl_family WHERE id = ?";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $family_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    
+    return $row ? $row['ftree_id'] : null;
+}
+
+/**
+ * Regenerate family tree
+ */
+function regenerateFamilyTree($family_id) {
+    global $con, $tbl_ftree;
+    
+    $root_family_id = findRootAncestor($family_id);
+    $old_ftree_id = getFamilyTreeId($root_family_id);
+    $tree = generateFamilyTree($root_family_id);
+    
+    if ($old_ftree_id) {
+        // Update existing tree
+        $json_tree = json_encode($tree, JSON_UNESCAPED_UNICODE);
+        $sql = "UPDATE $tbl_ftree SET tree_structure = ?, date_modified = CURRENT_TIMESTAMP WHERE id = ?";
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, "si", $json_tree, $old_ftree_id);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        
+        // Update ftree_id for all families in the tree (including newly added ones)
+        assignFtreeIdToAllFamilies($tree, $old_ftree_id);
+        
+        return $old_ftree_id;
+    } else {
+        // Create new tree
+        $ftree_id = saveFamilyTreeToDb($tree);
+        assignFtreeIdToAllFamilies($tree, $ftree_id);
+        
+        return $ftree_id;
+    }
+}
+
+/**
+ * Get or generate family tree for a family
+ */
+function getOrGenerateFamilyTree($family_id) {
+    $ftree_id = getFamilyTreeId($family_id);
+    
+    if ($ftree_id) {
+        $tree = fetchFamilyTree($ftree_id);
+        if ($tree) {
+            return ['tree' => $tree, 'ftree_id' => $ftree_id];
+        }
+    }
+    
+    $ftree_id = regenerateFamilyTree($family_id);
+    $tree = fetchFamilyTree($ftree_id);
+    
+    return ['tree' => $tree, 'ftree_id' => $ftree_id];
+}
         
         ?>

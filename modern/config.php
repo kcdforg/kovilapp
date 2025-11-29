@@ -22,6 +22,7 @@ $tbl_labels = 'labels';
 $tbl_donation = 'donation';
 $tbl_horoscope = 'horoscope';
 $tbl_subscription = 'subscription';
+$tbl_ftree = 'ftree';
 
 // Subscription Module Tables
 $tbl_subscription_events = 'subscription_events';
@@ -50,7 +51,7 @@ $modern_path = $base_dir . '/modern';
 $shared_assets = $base_dir . '/current';
 
 // Organization details
-$org_name = 'அருள்மிகு புது வெங்ககரை அம்மன் கோயில்';
+$org_name = 'அருள்மிகு புது வெங்கரை அம்மன் கோயில்';
 $org_name_english = 'Arulmigu Puthukarai Amman Kovil';
 
 ?>

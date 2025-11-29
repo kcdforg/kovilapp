@@ -15,7 +15,7 @@ $response = array(
 );
 
 // Get member details directly from database
-$member_sql = "SELECT id, name, deleted FROM $tbl_family WHERE id = ?";
+$member_sql = "SELECT id, name, deleted, parent_id FROM $tbl_family WHERE id = ?";
 $member_stmt = mysqli_prepare($con, $member_sql);
 mysqli_stmt_bind_param($member_stmt, "i", $id);
 mysqli_stmt_execute($member_stmt);
@@ -41,6 +41,12 @@ if (!$member) {
                 $response['success'] = true;
                 $response['message'] = 'Member "' . htmlspecialchars($member['name']) . '" has been successfully deleted.';
                 $response['member_name'] = htmlspecialchars($member['name']);
+                
+                // Check if this family has a parent_id (is part of a family tree)
+                if (!empty($member['parent_id']) && $member['parent_id'] > 0) {
+                    // Regenerate the parent family tree
+                    regenerateFamilyTree($member['parent_id']);
+                }
             } else {
                 $response['message'] = 'No rows were updated. Member may already be deleted.';
             }

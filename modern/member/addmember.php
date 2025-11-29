@@ -8,6 +8,7 @@ check_login();
 
 $success_message = '';
 $error_message = '';
+$child_id = $_GET['child_id'] ?? null;
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Process form submission
@@ -64,6 +65,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $result = add_member($member_data);
     
     if ($result) {
+        $new_family_id = $result; // add_member returns the new family ID
+        
+        // If this family is being added for a child, link them
+        if (!empty($_POST['child_id'])) {
+            $child_id = $_POST['child_id'];
+            
+            // Get parent family ID from child record
+            global $con, $tbl_child, $tbl_family;
+            $sql = "SELECT father_id FROM $tbl_child WHERE id = ?";
+            $stmt = mysqli_prepare($con, $sql);
+            mysqli_stmt_bind_param($stmt, 'i', $child_id);
+            mysqli_stmt_execute($stmt);
+            $result_child = mysqli_stmt_get_result($stmt);
+            $child_data = mysqli_fetch_assoc($result_child);
+            mysqli_stmt_close($stmt);
+            
+            if ($child_data) {
+                $parent_family_id = $child_data['father_id'];
+                
+                // Link child to new family
+                $sql = "UPDATE $tbl_child SET fam_id = ? WHERE id = ?";
+                $stmt = mysqli_prepare($con, $sql);
+                mysqli_stmt_bind_param($stmt, 'ii', $new_family_id, $child_id);
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+                
+                // Set parent_id for new family
+                $sql = "UPDATE $tbl_family SET parent_id = ? WHERE id = ?";
+                $stmt = mysqli_prepare($con, $sql);
+                mysqli_stmt_bind_param($stmt, 'ii', $parent_family_id, $new_family_id);
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+                
+                // Regenerate family tree
+                regenerateFamilyTree($parent_family_id);
+            }
+        }
+        
         $success_message = 'Member added successfully!';
         // Redirect to member list after 2 seconds
         header("refresh:2;url=memberlist.php");
@@ -150,6 +189,9 @@ include('../includes/header.php');
 <div class="row fluid-with-margins">
     <div class="col-12">
 <form method="POST" class="needs-validation" novalidate id="addMemberForm">
+    <?php if ($child_id): ?>
+        <input type="hidden" name="child_id" value="<?php echo htmlspecialchars($child_id); ?>">
+    <?php endif; ?>
     <!-- Validation Errors Summary -->
     <div id="validationSummary" class="alert alert-danger d-none mb-4" role="alert">
         <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Please correct the following errors:</h5>
@@ -195,7 +237,7 @@ include('../includes/header.php');
                             <select class="form-select select2" id="qualification" name="qualification">
                                 <option value="">Select Education</option>
                                 <?php
-                                $qualifications = get_labels_by_type('qualification');
+                                $qualifications = get_labels_by_type('Education');
                                 foreach ($qualifications as $qual) {
                                     echo "<option value='{$qual['id']}'>{$qual['display_name']}</option>";
                                 }

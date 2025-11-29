@@ -131,9 +131,9 @@ include('../includes/header.php');
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="h3 mb-0">Update Member: <?php echo htmlspecialchars($row['name'] ?? 'Unknown'); ?></h1>
             <div class="d-flex gap-2">
-                <a href="viewmember.php?id=<?php echo $id; ?>" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to View
-                </a>
+            <a href="viewmember.php?id=<?php echo $id; ?>" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to View
+            </a>
                 <button type="submit" form="updateMemberForm" class="btn btn-primary">
                     <i class="bi bi-check-circle"></i> Update Member
                 </button>
@@ -145,23 +145,23 @@ include('../includes/header.php');
 <?php if ($success_message): ?>
 <div class="row fluid-with-margins">
     <div class="col-12">
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle"></i> <?php echo $success_message; ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> <?php echo $success_message; ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     </div>
-</div>
+    </div>
 <?php endif; ?>
 
 <?php if ($error_message): ?>
 <div class="row fluid-with-margins">
     <div class="col-12">
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle"></i> <?php echo $error_message; ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> <?php echo $error_message; ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     </div>
-</div>
+    </div>
 <?php endif; ?>
 
 <div class="row fluid-with-margins">
@@ -181,48 +181,48 @@ include('../includes/header.php');
                     <div class="row mb-3">
                         <label for="name" class="col-sm-4 col-form-label">Name *</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="name" name="name" 
+                    <input type="text" class="form-control" id="name" name="name" 
                                    value="<?php echo htmlspecialchars($row['name'] ?? ''); ?>" required>
                             <div class="invalid-feedback">Please enter the name.</div>
                         </div>
-                    </div>
+                </div>
                     
                     <div class="row mb-3">
                         <label for="father_name" class="col-sm-4 col-form-label">Father's Name</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="father_name" name="father_name" 
+                    <input type="text" class="form-control" id="father_name" name="father_name" 
                                    value="<?php echo htmlspecialchars($row['father_name'] ?? ''); ?>">
-                        </div>
-                    </div>
-                    
+                </div>
+            </div>
+            
                     <div class="row mb-3">
                         <label for="mother_name" class="col-sm-4 col-form-label">Mother's Name</label>
                         <div class="col-sm-8">
                             <input type="text" class="form-control" id="mother_name" name="mother_name" 
                                    value="<?php echo htmlspecialchars($row['mother_name'] ?? ''); ?>">
-                        </div>
-                    </div>
-                    
+                </div>
+            </div>
+            
                     <div class="row mb-3">
                         <label for="qualification" class="col-sm-4 col-form-label">Education</label>
                         <div class="col-sm-8">
-                            <select class="form-select select2" id="qualification" name="qualification">
-                                <option value="">Select Education</option>
-                                <?php
-                                $qualifications = get_labels_by_type('qualification');
-                                foreach ($qualifications as $qual) {
+                    <select class="form-select select2" id="qualification" name="qualification">
+                        <option value="">Select Education</option>
+                        <?php
+                        $qualifications = get_labels_by_type('Education');
+                        foreach ($qualifications as $qual) {
                                     $selected = (($row['qualification'] ?? '') == $qual['id']) ? 'selected' : '';
-                                    echo "<option value='{$qual['id']}' $selected>{$qual['display_name']}</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                    </div>
-                    
+                            echo "<option value='{$qual['id']}' $selected>{$qual['display_name']}</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+            
                     <div class="row mb-3">
                         <label for="education_details" class="col-sm-4 col-form-label">Education Details</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="education_details" name="education_details" 
+                    <input type="text" class="form-control" id="education_details" name="education_details" 
                                    value="<?php echo htmlspecialchars($row['education_details'] ?? ''); ?>">
                         </div>
                     </div>
@@ -275,23 +275,23 @@ include('../includes/header.php');
                     <div class="row mb-3">
                         <label for="occupation" class="col-sm-4 col-form-label">Occupation</label>
                         <div class="col-sm-8">
-                            <select class="form-select select2" id="occupation" name="occupation">
-                                <option value="">Select Occupation</option>
-                                <?php
-                                $occupations = get_labels_by_type('occupation');
-                                foreach ($occupations as $occ) {
+                    <select class="form-select select2" id="occupation" name="occupation">
+                        <option value="">Select Occupation</option>
+                        <?php
+                        $occupations = get_labels_by_type('occupation');
+                        foreach ($occupations as $occ) {
                                     $selected = (($row['occupation'] ?? '') == $occ['id']) ? 'selected' : '';
-                                    echo "<option value='{$occ['id']}' $selected>{$occ['display_name']}</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                    </div>
-                    
+                            echo "<option value='{$occ['id']}' $selected>{$occ['display_name']}</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+            
                     <div class="row mb-3">
                         <label for="occupation_details" class="col-sm-4 col-form-label">Occupation Details</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="occupation_details" name="occupation_details" 
+                <input type="text" class="form-control" id="occupation_details" name="occupation_details" 
                                    value="<?php echo htmlspecialchars($row['occupation_details'] ?? ''); ?>">
                         </div>
                     </div>
@@ -492,12 +492,12 @@ include('../includes/header.php');
                                    value="<?php echo htmlspecialchars($row['pincode']); ?>">
                         </div>
                     </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        
+                
         <!-- Current Address -->
-        <div class="col-md-6">
+                <div class="col-md-6">
             <div class="card h-100">
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">
@@ -516,7 +516,7 @@ include('../includes/header.php');
                     <div class="row mb-3">
                         <label for="current_address" class="col-sm-4 col-form-label">Current Address</label>
                         <div class="col-sm-8">
-                            <textarea class="form-control" id="current_address" name="current_address" rows="3"><?php echo htmlspecialchars($row['current_address']); ?></textarea>
+                        <textarea class="form-control" id="current_address" name="current_address" rows="3"><?php echo htmlspecialchars($row['current_address']); ?></textarea>
                         </div>
                     </div>
                     
@@ -586,55 +586,55 @@ include('../includes/header.php');
                     <div class="row mb-3">
                         <label for="kattalai" class="col-sm-4 col-form-label">Kattalai</label>
                         <div class="col-sm-8">
-                            <select class="form-select select2" id="kattalai" name="kattalai">
-                                <option value="">Select Kattalai</option>
-                                <?php
-                                $kattalais = get_labels_by_type('kattalai');
-                                foreach ($kattalais as $katt) {
-                                    $selected = ($row['kattalai'] == $katt['id']) ? 'selected' : '';
-                                    echo "<option value='{$katt['id']}' $selected>{$katt['display_name']}</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
+                    <select class="form-select select2" id="kattalai" name="kattalai">
+                        <option value="">Select Kattalai</option>
+                        <?php
+                        $kattalais = get_labels_by_type('kattalai');
+                        foreach ($kattalais as $katt) {
+                            $selected = ($row['kattalai'] == $katt['id']) ? 'selected' : '';
+                            echo "<option value='{$katt['id']}' $selected>{$katt['display_name']}</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
                     </div>
                     
                     <div class="row mb-3">
                         <label for="k_village" class="col-sm-4 col-form-label">Kattalai Village</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="k_village" name="k_village" 
-                                   value="<?php echo htmlspecialchars($row['k_village']); ?>">
-                        </div>
+                    <input type="text" class="form-control" id="k_village" name="k_village" 
+                           value="<?php echo htmlspecialchars($row['k_village']); ?>">
+                </div>
                     </div>
                     
                     <div class="row mb-3">
                         <label for="pudavai" class="col-sm-4 col-form-label">Pudavai</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="pudavai" name="pudavai" 
-                                   value="<?php echo htmlspecialchars($row['pudavai']); ?>">
-                        </div>
-                    </div>
-                    
+                    <input type="text" class="form-control" id="pudavai" name="pudavai" 
+                           value="<?php echo htmlspecialchars($row['pudavai']); ?>">
+                </div>
+            </div>
+            
                     <div class="row mb-3">
                         <label for="ic" class="col-sm-4 col-form-label">IC</label>
                         <div class="col-sm-8">
-                            <select class="form-select" id="ic" name="ic">
-                                <option value="">Select</option>
-                                <option value="Yes" <?php echo ($row['ic'] == 'Yes') ? 'selected' : ''; ?>>Yes</option>
-                                <option value="No" <?php echo ($row['ic'] == 'No') ? 'selected' : ''; ?>>No</option>
-                            </select>
-                        </div>
-                    </div>
+                    <select class="form-select" id="ic" name="ic">
+                        <option value="">Select</option>
+                        <option value="Yes" <?php echo ($row['ic'] == 'Yes') ? 'selected' : ''; ?>>Yes</option>
+                        <option value="No" <?php echo ($row['ic'] == 'No') ? 'selected' : ''; ?>>No</option>
+                    </select>
                 </div>
-                
+                </div>
+            </div>
+            
                 <!-- Right Column -->
                 <div class="col-md-6">
                     <div class="row mb-3">
                         <label for="remarks" class="col-sm-4 col-form-label">Remarks</label>
                         <div class="col-sm-8">
                             <textarea class="form-control" id="remarks" name="remarks" rows="6"><?php echo htmlspecialchars($row['remarks']); ?></textarea>
-                        </div>
-                    </div>
+                </div>
+            </div>
                 </div>
             </div>
         </div>

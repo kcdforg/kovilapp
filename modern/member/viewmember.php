@@ -245,6 +245,16 @@ include('../includes/header.php');
         margin-right: 1rem;
     }
 }
+
+.admin-note-item {
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.admin-note-item:hover {
+    background: #e9ecef;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 </style>
 
 <div class="row fluid-with-margins">
@@ -331,6 +341,16 @@ include('../includes/header.php');
                                                         <div class="data-label">Name:</div>
                                                         <div class="data-value"><?php echo htmlspecialchars($row['name'] ?? '-'); ?></div>
                                                     </div>
+                                                    <?php if (!empty($row['parent_id']) && $row['parent_id'] > 0): ?>
+                                                    <div class="data-item">
+                                                        <div class="data-label">Parent Family:</div>
+                                                        <div class="data-value">
+                                                            <a href="viewmember.php?id=<?php echo $row['parent_id']; ?>" class="btn btn-sm btn-outline-primary">
+                                                                <i class="bi bi-arrow-up-circle"></i> View Parent
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                    <?php endif; ?>
                                                     <div class="data-item">
                                                         <div class="data-label">Father's Name:</div>
                                                         <div class="data-value"><?php echo htmlspecialchars($row['father_name'] ?? '-'); ?></div>
@@ -663,17 +683,323 @@ include('../includes/header.php');
                                     </div>
 
                                     <!-- Family Tree Section -->
+                                    <?php
+                                    // Get family tree (don't auto-generate, only show if exists)
+                                    $ftree_id = getFamilyTreeId($id);
+                                    $family_tree = null;
+                                    
+                                    // Debug: Check what ftree_id we got
+                                    // echo "<!-- DEBUG: Family ID: $id, FTree ID: " . ($ftree_id ?? 'NULL') . " -->";
+                                    
+                                    if ($ftree_id) {
+                                        $family_tree = fetchFamilyTree($ftree_id);
+                                        // echo "<!-- DEBUG: Tree fetched: " . ($family_tree ? 'YES' : 'NO') . " -->";
+                                    }
+                                    
+                                    // Function to render family tree node recursively
+                                    function renderFamilyTreeNode($node, $current_family_id, $level = 0) {
+                                        global $con, $tbl_family, $tbl_child;
+                                        
+                                        $node_type = $node['type'] ?? 'family';
+                                        
+                                        if ($node_type == 'child') {
+                                            // This is a child node
+                                            $child_id = $node['child_id'];
+                                            $fam_id = $node['fam_id'] ?? 0;
+                                            $has_family = !empty($fam_id) && $fam_id > 0;
+                                            
+                                            // If child has a family, just render the family node directly
+                                            if ($has_family && !empty($node['children'])) {
+                                                foreach ($node['children'] as $child_node) {
+                                                    renderFamilyTreeNode($child_node, $current_family_id, $level);
+                                                }
+                                            } else {
+                                                // Child doesn't have a family - show child name
+                                                // Fetch child details from child table
+                                                $sql = "SELECT c_name, c_gender FROM $tbl_child WHERE id = ?";
+                                                $stmt = mysqli_prepare($con, $sql);
+                                                mysqli_stmt_bind_param($stmt, "i", $child_id);
+                                                mysqli_stmt_execute($stmt);
+                                                $result = mysqli_stmt_get_result($stmt);
+                                                $child = mysqli_fetch_assoc($result);
+                                                mysqli_stmt_close($stmt);
+                                                
+                                                if ($child) {
+                                                    $gender_icon = ($child['c_gender'] == 'male' || $child['c_gender'] == 'Male') ? '👤' : '👧';
+                                                    
+                                                    echo '<ul class="tree-list">';
+                                                    echo '<li class="tree-item child-item">';
+                                                    echo '<div class="tree-content">';
+                                                    echo '<span class="tree-toggle-empty"></span>';
+                                                    echo '<span class="tree-icon">' . $gender_icon . '</span>';
+                                                    echo '<span class="tree-text">' . htmlspecialchars($child['c_name']) . '</span>';
+                                                    echo '</div>';
+                                                    echo '</li>';
+                                                    echo '</ul>';
+                                                }
+                                            }
+                                        } else {
+                                            // This is a family node
+                                            $family_id = $node['id'];
+                                            
+                                            // Fetch family details
+                                            $sql = "SELECT id, name, w_name FROM $tbl_family WHERE id = ?";
+                                            $stmt = mysqli_prepare($con, $sql);
+                                            mysqli_stmt_bind_param($stmt, "i", $family_id);
+                                            mysqli_stmt_execute($stmt);
+                                            $result = mysqli_stmt_get_result($stmt);
+                                            $family = mysqli_fetch_assoc($result);
+                                            mysqli_stmt_close($stmt);
+                                            
+                                            if ($family) {
+                                                $is_current = ($family_id == $current_family_id);
+                                                $highlight_class = $is_current ? 'current-family' : '';
+                                                $has_children = !empty($node['children']);
+                                                $unique_id = 'tree-node-' . $family_id;
+                                                
+                                                echo '<ul class="tree-list">';
+                                                echo '<li class="tree-item ' . $highlight_class . '">';
+                                                echo '<div class="tree-content">';
+                                                
+                                                if ($has_children) {
+                                                    echo '<span class="tree-toggle" onclick="toggleNode(\'' . $unique_id . '\')">▼</span>';
+                                                } else {
+                                                    echo '<span class="tree-toggle-empty"></span>';
+                                                }
+                                                
+                                                echo '<span class="tree-icon">📁</span>';
+                                                echo '<a href="viewmember.php?id=' . $family['id'] . '" class="tree-link">';
+                                                echo htmlspecialchars($family['name']);
+                                                if (!empty($family['w_name'])) {
+                                                    echo ' & ' . htmlspecialchars($family['w_name']);
+                                                }
+                                                echo '</a>';
+                                                echo '</div>';
+                                                
+                                                // Children
+                                                if ($has_children) {
+                                                    echo '<div class="tree-children" id="' . $unique_id . '">';
+                                                    foreach ($node['children'] as $child_node) {
+                                                        renderFamilyTreeNode($child_node, $current_family_id, $level + 1);
+                                                    }
+                                                    echo '</div>';
+                                                }
+                                                
+                                                echo '</li>';
+                                                echo '</ul>';
+                                            }
+                                        }
+                                    }
+                                    ?>
                                     <div class="card">
-                                        <div class="card-header">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
                                             <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Family Tree</h6>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-light me-2" onclick="regenerateTree()">
+                                                    <i class="bi bi-arrow-clockwise"></i> Regenerate
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteTree()">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="card-body" style="height: 300px;">
-                                            <div class="text-center text-muted py-5">
-                                                <i class="bi bi-diagram-3" style="font-size: 48px;"></i>
-                                                <p class="mt-2">Family tree visualization coming soon</p>
+                                        <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                                            <div id="familyTreeContainer" class="family-tree-view">
+                                                <?php if ($family_tree): ?>
+                                                    <?php renderFamilyTreeNode($family_tree, $id); ?>
+                                                <?php else: ?>
+                                                    <div class="text-center py-4">
+                                                        <i class="bi bi-diagram-3 text-muted" style="font-size: 48px;"></i>
+                                                        <p class="text-muted mt-2">No family tree generated yet</p>
+                                                        <button class="btn btn-primary btn-sm" onclick="regenerateTree()">
+                                                            <i class="bi bi-plus-circle"></i> Generate Family Tree
+                                                        </button>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    <style>
+                                    .family-tree-view {
+                                        padding: 5px;
+                                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                        font-size: 0.85rem;
+                                    }
+                                    
+                                    .tree-list {
+                                        list-style: none;
+                                        padding-left: 0;
+                                        margin: 0;
+                                        position: relative;
+                                    }
+                                    
+                                    .tree-list .tree-list {
+                                        padding-left: 20px;
+                                        margin-top: 2px;
+                                    }
+                                    
+                                    .tree-list .tree-list::before {
+                                        content: '';
+                                        position: absolute;
+                                        left: 8px;
+                                        top: 0;
+                                        bottom: 0;
+                                        width: 1px;
+                                        background: #dee2e6;
+                                    }
+                                    
+                                    .tree-item {
+                                        position: relative;
+                                        padding: 2px 0;
+                                    }
+                                    
+                                    .tree-item::before {
+                                        content: '';
+                                        position: absolute;
+                                        left: -12px;
+                                        top: 12px;
+                                        width: 12px;
+                                        height: 1px;
+                                        background: #dee2e6;
+                                    }
+                                    
+                                    .tree-item:first-child::before {
+                                        left: -12px;
+                                    }
+                                    
+                                    .tree-content {
+                                        display: flex;
+                                        align-items: center;
+                                        padding: 3px 0;
+                                        margin-bottom: 2px;
+                                    }
+                                    
+                                    .tree-content:hover .tree-link {
+                                        color: #0a58ca;
+                                    }
+                                    
+                                    .tree-toggle {
+                                        display: inline-block;
+                                        width: 16px;
+                                        font-size: 0.7rem;
+                                        cursor: pointer;
+                                        user-select: none;
+                                        transition: transform 0.2s ease;
+                                        color: #6c757d;
+                                    }
+                                    
+                                    .tree-toggle.collapsed {
+                                        transform: rotate(-90deg);
+                                    }
+                                    
+                                    .tree-toggle-empty {
+                                        display: inline-block;
+                                        width: 16px;
+                                    }
+                                    
+                                    .tree-icon {
+                                        margin-right: 6px;
+                                        font-size: 0.9rem;
+                                    }
+                                    
+                                    .tree-link {
+                                        color: #0d6efd;
+                                        text-decoration: none;
+                                        font-weight: 500;
+                                        font-size: 0.8rem;
+                                        transition: color 0.15s ease;
+                                    }
+                                    
+                                    .tree-link:hover {
+                                        text-decoration: underline;
+                                    }
+                                    
+                                    .tree-text {
+                                        color: #495057;
+                                        font-size: 0.75rem;
+                                        transition: color 0.15s ease;
+                                    }
+                                    
+                                    .tree-item.current-family > .tree-content .tree-link {
+                                        color: #198754;
+                                        font-weight: 700;
+                                    }
+                                    
+                                    .tree-children {
+                                        transition: all 0.2s ease;
+                                    }
+                                    
+                                    .tree-children.collapsed {
+                                        display: none;
+                                    }
+                                    </style>
+                                    
+                                    <script>
+                                    function toggleNode(nodeId) {
+                                        const node = document.getElementById(nodeId);
+                                        const toggle = event.target;
+                                        
+                                        if (node) {
+                                            node.classList.toggle('collapsed');
+                                            toggle.classList.toggle('collapsed');
+                                        }
+                                    }
+                                    
+                                    function regenerateTree() {
+                                        if (!confirm('Are you sure you want to regenerate the family tree?')) {
+                                            return;
+                                        }
+                                        
+                                        const formData = new FormData();
+                                        formData.append('family_id', <?php echo $id; ?>);
+                                        
+                                        fetch('regenerate_tree.php', {
+                                            method: 'POST',
+                                            body: formData
+                                        })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                alert('Family tree regenerated successfully');
+                                                window.location.reload();
+                                            } else {
+                                                alert('Failed to regenerate tree: ' + (data.message || 'Unknown error'));
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error:', error);
+                                            alert('Error regenerating tree');
+                                        });
+                                    }
+                                    
+                                    function deleteTree() {
+                                        if (!confirm('Are you sure you want to delete the family tree? This will remove the tree for all related families.')) {
+                                            return;
+                                        }
+                                        
+                                        const formData = new FormData();
+                                        formData.append('family_id', <?php echo $id; ?>);
+                                        
+                                        fetch('delete_tree.php', {
+                                            method: 'POST',
+                                            body: formData
+                                        })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                alert('Family tree deleted successfully');
+                                                window.location.reload();
+                                            } else {
+                                                alert('Failed to delete tree: ' + (data.message || 'Unknown error'));
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Error:', error);
+                                            alert('Error deleting tree');
+                                        });
+                                    }
+                                    </script>
 
                                     <!-- Other Details Section -->
                                     <div class="card">
@@ -706,9 +1032,51 @@ include('../includes/header.php');
                                             <h6 class="mb-0"><i class="bi bi-sticky"></i> Admin Notes</h6>
                                         </div>
                                         <div class="card-body">
-                                            <div class="data-item">
-                                                <div class="data-label">Admin Notes:</div>
-                                                <div class="data-value"><?php echo htmlspecialchars($row['admin_notes'] ?? '-'); ?></div>
+                                            <!-- Add Note Form -->
+                                            <div class="mb-3">
+                                                <textarea class="form-control" id="adminNoteText" rows="3" placeholder="Enter admin note..."></textarea>
+                                                <div class="text-end">
+                                                    <button class="btn btn-primary btn-sm mt-2" onclick="addAdminNote()">
+                                                        <i class="bi bi-plus-circle"></i> Add Note
+                                                    </button>
+                                            </div>
+                                        </div>
+                                            
+                                            <!-- Display Existing Notes -->
+                                            <div id="adminNotesList">
+                                                <?php
+                                                $notes = [];
+                                                if (!empty($row['admin_notes'])) {
+                                                    $decoded = json_decode($row['admin_notes'], true);
+                                                    if (is_array($decoded)) {
+                                                        $notes = $decoded;
+                                                    }
+                                                }
+                                                
+                                                if (empty($notes)): ?>
+                                                    <div class="text-muted text-center py-3" id="noNotesMessage">
+                                                        <i class="bi bi-sticky"></i> No notes yet
+                                    </div>
+                                                <?php else: ?>
+                                                    <?php foreach ($notes as $note): ?>
+                                                        <div class="admin-note-item mb-3 p-3 border rounded" id="note-<?php echo htmlspecialchars($note['id'] ?? ''); ?>">
+                                                            <div class="d-flex justify-content-between mb-2">
+                                                                <small class="text-muted">
+                                                                    <i class="bi bi-person"></i> <?php echo htmlspecialchars($note['added_by'] ?? 'Admin'); ?>
+                                                                </small>
+                                                                <div>
+                                                                    <small class="text-muted me-2">
+                                                                        <i class="bi bi-clock"></i> <?php echo htmlspecialchars($note['added_at'] ?? ''); ?>
+                                                                    </small>
+                                                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteAdminNote('<?php echo htmlspecialchars($note['id'] ?? ''); ?>')">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div><?php echo nl2br(htmlspecialchars($note['note'] ?? '')); ?></div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     </div>
@@ -3767,6 +4135,106 @@ function showErrorToast(message) {
     `;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
+}
+
+function addAdminNote() {
+    const noteText = document.getElementById('adminNoteText').value.trim();
+    
+    if (!noteText) {
+        showErrorToast('Please enter a note');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('member_id', <?php echo $id; ?>);
+    formData.append('note_text', noteText);
+    
+    fetch('add_admin_note.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Clear textarea
+            document.getElementById('adminNoteText').value = '';
+            
+            // Remove "no notes" message if exists
+            const noNotesMsg = document.getElementById('noNotesMessage');
+            if (noNotesMsg) {
+                noNotesMsg.remove();
+            }
+            
+            // Add new note to the list
+            const notesList = document.getElementById('adminNotesList');
+            const noteHtml = `
+                <div class="admin-note-item mb-3 p-3 border rounded" id="note-${data.note.id}">
+                    <div class="d-flex justify-content-between mb-2">
+                        <small class="text-muted">
+                            <i class="bi bi-person"></i> ${data.note.added_by}
+                        </small>
+                        <div>
+                            <small class="text-muted me-2">
+                                <i class="bi bi-clock"></i> ${data.note.added_at}
+                            </small>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAdminNote('${data.note.id}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>${data.note.note.replace(/\n/g, '<br>')}</div>
+                </div>
+            `;
+            notesList.insertAdjacentHTML('afterbegin', noteHtml);
+            
+            showSuccessToast('Note added successfully');
+        } else {
+            showErrorToast(data.message || 'Failed to add note');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorToast('Error adding note');
+    });
+}
+
+function deleteAdminNote(noteId) {
+    if (!confirm('Are you sure you want to delete this note?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('member_id', <?php echo $id; ?>);
+    formData.append('note_id', noteId);
+    
+    fetch('delete_admin_note.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove note from DOM
+            const noteElement = document.getElementById('note-' + noteId);
+            if (noteElement) {
+                noteElement.remove();
+            }
+            
+            // Check if no notes left, show message
+            const notesList = document.getElementById('adminNotesList');
+            if (notesList.children.length === 0) {
+                notesList.innerHTML = '<div class="text-muted text-center py-3" id="noNotesMessage"><i class="bi bi-sticky"></i> No notes yet</div>';
+            }
+            
+            showSuccessToast('Note deleted successfully');
+        } else {
+            showErrorToast(data.message || 'Failed to delete note');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorToast('Error deleting note');
+    });
 }
 </script>
 

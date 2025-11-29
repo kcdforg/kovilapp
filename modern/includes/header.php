@@ -316,5 +316,72 @@
         </div>
     </nav>
 
+    <!-- Association Name Banner -->
+    <div class="association-banner">
+        <div class="container-fluid">
+            <div class="text-center py-3">
+                <h4 class="org-name-tamil mb-1"><?php echo $org_name ?? ''; ?></h4>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .association-banner {
+            background: linear-gradient(135deg, #f5e6d3 0%, #f9ead8 50%, #f5e6d3 100%);
+            border-bottom: 3px solid #c9975b;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .association-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 15% 50%, rgba(201, 151, 91, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 85% 50%, rgba(201, 151, 91, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        
+        .association-banner .container-fluid {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .org-name-tamil {
+            color: #2c3e50;
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        
+        .org-name-english {
+            color: #5a6c7d;
+            font-weight: 500;
+            font-size: 1rem;
+            font-style: italic;
+            margin: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .org-name-tamil {
+                font-size: 1.2rem;
+            }
+            
+            .org-name-english {
+                font-size: 0.9rem;
+            }
+            
+            .association-banner .py-3 {
+                padding-top: 0.75rem !important;
+                padding-bottom: 0.75rem !important;
+            }
+        }
+    </style>
+
     <!-- Main Content Container -->
     <main class="container-fluid mt-4 flex-fill"> 
