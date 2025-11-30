@@ -18,7 +18,7 @@ A comprehensive temple management system built with PHP and MySQL, featuring mem
 2. **Run Installation**
    ```bash
    # Web-based installation
-   http://yourdomain.com/kovilapp/install.php?install
+   http://yourdomain.com/install.php?install
    
    # Or command line installation
    php install.php
@@ -75,24 +75,23 @@ kovilapp/
 │   ├── config.template.php     # Configuration template
 │   └── INSTALL.md              # Detailed installation guide
 │
-├── 🏛️ Modern Application
-│   ├── modern/                 # Main application directory
-│   │   ├── member/            # Member management
-│   │   ├── matrimony/         # Matrimony services
-│   │   ├── subscription/      # Subscription management
-│   │   ├── donation/          # Donation tracking
-│   │   ├── includes/          # Common includes
-│   │   ├── assets/            # Static assets
-│   │   ├── images/            # Image uploads
-│   │   └── attachments/       # File uploads
-│   │
-├── 📚 Legacy Version (Optional)
-│   └── current/               # Legacy version for migration
+├── 🏛️ Application Modules
+│   ├── member/                # Member management
+│   ├── matrimony/             # Matrimony services
+│   ├── subscription/          # Subscription management
+│   ├── donation/              # Donation tracking
+│   ├── settings/              # Settings and configuration
+│   ├── user/                  # User management
+│   ├── label/                 # Label management
+│   ├── includes/              # Common includes (header, footer)
+│   ├── assets/                # Static assets (CSS, JS)
+│   ├── images/                # Image uploads
+│   └── attachments/           # File uploads
 │
-└── 📖 Documentation
+└── 📖 Documentation & Database
     ├── README.md              # This file
     ├── INSTALL.md             # Installation guide
-    └── *.sql                  # Database schemas
+    └── *.sql                  # Database schemas and migrations
 ```
 
 ## 🔧 Installation Scripts
@@ -158,7 +157,7 @@ php check_requirements.php
 php install.php
 
 # Start development server (PHP 7.4+)
-php -S localhost:8000 -t modern/
+php -S localhost:8000
 ```
 
 ### Contributing

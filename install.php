@@ -30,11 +30,9 @@ $config = [
     'min_php_version' => '7.4.0',
     'required_extensions' => ['mysqli', 'gd', 'mbstring', 'json'],
     'required_directories' => [
-        'modern/images/member',
-        'modern/attachments',
-        'modern/assets/uploads',
-        'current/images/member',
-        'current/attachments'
+        'images/member',
+        'attachments',
+        'assets/uploads'
     ],
     'database_tables' => [
         'users',
@@ -144,10 +142,9 @@ class KovilAppInstaller {
         
         // Check specific directories
         $check_dirs = [
-            'modern',
-            'modern/images',
-            'modern/attachments',
-            'current/images'
+            'images',
+            'attachments',
+            'assets'
         ];
         
         foreach ($check_dirs as $dir) {
@@ -262,9 +259,9 @@ class KovilAppInstaller {
         
         // Read and execute SQL files
         $sql_files = [
-            'modern/subscription_database.sql',
-            'modern/add_address_column.sql',
-            'modern/add_book_type_column.sql'
+            'subscription_database.sql',
+            'add_address_column.sql',
+            'add_book_type_column.sql'
         ];
         
         foreach ($sql_files as $sql_file) {
@@ -403,7 +400,7 @@ class KovilAppInstaller {
         // Update config.php with user's database settings
         $config_content = $this->generateConfigFile();
         
-        if (file_put_contents('modern/config.php', $config_content)) {
+        if (file_put_contents('config.php', $config_content)) {
             $this->success_messages[] = "Updated configuration file";
         } else {
             $this->errors[] = "Failed to update configuration file";
@@ -458,18 +455,11 @@ $script_name = rtrim($script_name, \'/\\\\\');
 // Dynamically determine the protocol
 $protocol = (!empty($_SERVER[\'HTTPS\']) && $_SERVER[\'HTTPS\'] !== \'off\') ? \'https\' : \'http\';
 
-// Base path for the modern version
-$path = $protocol . \'://\' . $_SERVER[\'SERVER_NAME\'] . \'/kovilapp/modern\';
+// Base path for the application
+$path = $protocol . \'://\' . $_SERVER[\'SERVER_NAME\'] . $script_name;
 
 // Base directory for file operations
-$base_dir = $_SERVER[\'DOCUMENT_ROOT\'] . \'/kovilapp\';
-
-// Paths for different versions
-$current_path = $base_dir . \'/current\';
-$modern_path = $base_dir . \'/modern\';
-
-// Shared assets path (if needed)
-$shared_assets = $base_dir . \'/current\';
+$base_dir = dirname(__DIR__);
 
 ?>';
     }
@@ -521,14 +511,13 @@ RewriteEngine On
     private function setupDefaultData() {
         echo "Setting up default data...\n";
         
-        // Copy default images if they don't exist
-        $default_image_source = 'current/images/default.png';
-        $default_image_target = 'modern/images/default.png';
+        // Ensure default image exists
+        $default_image = 'images/default.png';
         
-        if (file_exists($default_image_source) && !file_exists($default_image_target)) {
-            if (copy($default_image_source, $default_image_target)) {
-                $this->success_messages[] = "Copied default image";
-            }
+        if (file_exists($default_image)) {
+            $this->success_messages[] = "Default image found";
+        } else {
+            $this->warnings[] = "Default image not found at: {$default_image}";
         }
         
         $this->success_messages[] = "Default data setup completed";
@@ -537,15 +526,15 @@ RewriteEngine On
     private function finalChecks() {
         echo "Performing final checks...\n";
         
-        // Check if modern/index.php exists
-        if (file_exists('modern/index.php')) {
+        // Check if index.php exists
+        if (file_exists('index.php')) {
             $this->success_messages[] = "Application entry point found";
         } else {
-            $this->errors[] = "Application entry point not found: modern/index.php";
+            $this->errors[] = "Application entry point not found: index.php";
         }
         
         // Check if configuration is readable
-        if (is_readable('modern/config.php')) {
+        if (is_readable('config.php')) {
             $this->success_messages[] = "Configuration file is readable";
         } else {
             $this->errors[] = "Configuration file is not readable";
@@ -584,7 +573,7 @@ RewriteEngine On
         if (empty($this->errors)) {
             echo "🎉 INSTALLATION COMPLETED SUCCESSFULLY!\n\n";
             echo "Next steps:\n";
-            echo "1. Navigate to: http://yourdomain.com/kovilapp/modern/\n";
+            echo "1. Navigate to: http://yourdomain.com/\n";
             echo "2. Login with: admin / admin123\n";
             echo "3. Change the default password\n";
             echo "4. Configure your application settings\n";

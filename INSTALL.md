@@ -35,7 +35,7 @@ max_execution_time = 300
 
 #### Option A: Web-based Installation
 1. Upload all files to your web server
-2. Navigate to: `http://yourdomain.com/kovilapp/install.php?install`
+2. Navigate to: `http://yourdomain.com/install.php?install`
 3. Fill in the database configuration form
 4. Click "Install Kovil App"
 5. Follow the on-screen instructions
@@ -70,21 +70,20 @@ max_execution_time = 300
 
 3. Import the database structure:
    ```bash
-   mysql -u kovil_user -p kovil < modern/subscription_database.sql
+   mysql -u kovil_user -p kovil < subscription_database.sql
    ```
 
 #### Step 2: File Configuration
 1. Copy the application files to your web server directory
 2. Set proper file permissions:
    ```bash
-   chmod 755 modern/
-   chmod 777 modern/images/
-   chmod 777 modern/attachments/
-   chmod 777 current/images/
-   chmod 777 current/attachments/
+   chmod 755 .
+   chmod 777 images/
+   chmod 777 images/member/
+   chmod 777 attachments/
    ```
 
-3. Configure the database connection in `modern/config.php`:
+3. Configure the database connection in `config.php`:
    ```php
    $db_host = 'localhost';
    $db_name = 'kovil';
@@ -132,7 +131,7 @@ location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
 ## Post-Installation Setup
 
 ### 1. Initial Login
-- Navigate to: `http://yourdomain.com/kovilapp/modern/`
+- Navigate to: `http://yourdomain.com/`
 - Default credentials:
   - **Username**: `admin`
   - **Password**: `admin123`
@@ -153,26 +152,29 @@ location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
 
 ```
 kovilapp/
-├── current/                    # Legacy version (optional)
-├── modern/                     # Modern version (main application)
-│   ├── assets/                # Static assets (CSS, JS, images)
-│   ├── attachments/           # File uploads
-│   ├── images/                # Image uploads
-│   │   └── member/           # Member photos
-│   ├── includes/             # Common includes
-│   │   ├── header.php
-│   │   └── footer.php
-│   ├── member/               # Member management
-│   ├── matrimony/            # Matrimony services
-│   ├── subscription/         # Subscription management
-│   ├── donation/             # Donation tracking
-│   ├── config.php            # Database configuration
-│   ├── init.php              # Application initialization
-│   ├── function.php          # Common functions
-│   └── index.php             # Application entry point
+├── assets/                    # Static assets (CSS, JS, images)
+├── attachments/               # File uploads
+├── images/                    # Image uploads
+│   └── member/               # Member photos
+├── includes/                 # Common includes
+│   ├── header.php
+│   └── footer.php
+├── member/                   # Member management
+├── matrimony/                # Matrimony services
+├── subscription/             # Subscription management
+├── donation/                 # Donation tracking
+├── settings/                 # Settings management
+├── user/                     # User management
+├── label/                    # Label management
+├── config.php                # Database configuration
+├── init.php                  # Application initialization
+├── function.php              # Common functions
+├── index.php                 # Application entry point
+├── dashboard.php             # Main dashboard
 ├── install.php               # Installation script
 ├── INSTALL.md               # This file
-└── README.md                # Project documentation
+├── README.md                # Project documentation
+└── *.sql                    # Database schemas and migrations
 ```
 
 ## Features Overview
@@ -209,8 +211,8 @@ Error: Failed to upload file
 ```
 **Solution**: Check file permissions on upload directories:
 ```bash
-chmod 777 modern/images/member/
-chmod 777 modern/attachments/
+chmod 777 images/member/
+chmod 777 attachments/
 ```
 
 #### PHP Memory Limit Error
@@ -244,7 +246,7 @@ mysqldump -u kovil_user -p kovil > backup_$(date +%Y%m%d_%H%M%S).sql
 ### File Backup
 Backup uploaded files:
 ```bash
-tar -czf files_backup_$(date +%Y%m%d_%H%M%S).tar.gz modern/images/ modern/attachments/
+tar -czf files_backup_$(date +%Y%m%d_%H%M%S).tar.gz images/ attachments/
 ```
 
 ### Update Process
@@ -259,12 +261,12 @@ tar -czf files_backup_$(date +%Y%m%d_%H%M%S).tar.gz modern/images/ modern/attach
 ### File Permissions
 ```bash
 # Application files
-find modern/ -type f -exec chmod 644 {} \;
-find modern/ -type d -exec chmod 755 {} \;
+find . -type f -exec chmod 644 {} \;
+find . -type d -exec chmod 755 {} \;
 
 # Upload directories
-chmod 777 modern/images/member/
-chmod 777 modern/attachments/
+chmod 777 images/member/
+chmod 777 attachments/
 ```
 
 ### Database Security

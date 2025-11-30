@@ -2,7 +2,7 @@
 /**
  * Kovil App - Configuration Template
  * 
- * Copy this file to modern/config.php and update the values below
+ * Copy this file to config.php and update the values below
  * 
  * SECURITY NOTE: Never commit config.php with real credentials to version control
  */
@@ -48,26 +48,22 @@ $tbl_receipt_details = 'receipt_details';              // Receipt details
 // PATH CONFIGURATION
 // =============================================================================
 
-// Dynamically determine the base path for assets
-$script_name = dirname($_SERVER['SCRIPT_NAME']);
-$script_name = rtrim($script_name, '/\\');
-
 // Dynamically determine the protocol (HTTP/HTTPS)
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 
-// Base URL for the modern version
-// Update this if your application is in a different directory
-$path = $protocol . '://' . $_SERVER['SERVER_NAME'] . '/kovilapp/modern';
+// Determine the application root path
+// This works by finding the path from document root to the config.php location
+$doc_root = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+$config_dir = dirname(__FILE__);
+$app_path = str_replace($doc_root, '', $config_dir);
+$app_path = str_replace('\\', '/', $app_path); // Normalize for Windows
+
+// Base URL path for the application (always points to root)
+// This ensures menu links work correctly from any subdirectory
+$path = $protocol . '://' . $_SERVER['SERVER_NAME'] . $app_path;
 
 // Base directory for file operations
-$base_dir = $_SERVER['DOCUMENT_ROOT'] . '/kovilapp';
-
-// Paths for different versions
-$current_path = $base_dir . '/current';    // Legacy version path
-$modern_path = $base_dir . '/modern';      // Modern version path
-
-// Shared assets path (if needed for legacy compatibility)
-$shared_assets = $base_dir . '/current';
+$base_dir = dirname(__FILE__);
 
 // =============================================================================
 // APPLICATION SETTINGS
