@@ -120,10 +120,10 @@ function count_family() {
     return $num_rows;
 }
 
-// Helper to handle NULLs and escaping
+// Helper to handle empty strings and escaping
 function sql_null_or_str($val) {
     global $con;
-    return ($val === '' ? 'NULL' : "'" . mysqli_real_escape_string($con, $val) . "'");
+    return "'" . mysqli_real_escape_string($con, $val ?? '') . "'";
 }
 function sql_null_or_int($val) {
     return ($val === '' ? 0 : (int)$val);
@@ -672,8 +672,8 @@ function update_family($id, $data) {
         $w_blood_group = sql_null_or_int($data['w_blood_group'] ?? '');
         $w_qualification = sql_null_or_int($data['w_qualification'] ?? '');
         $w_occupation = sql_null_or_int($data['w_occupation'] ?? '');
-        $w_kootam = sql_null_or_str($data['w_kootam'] ?? '');
-        $w_temple = sql_null_or_str($data['w_temple'] ?? '');
+        $w_kootam = sql_null_or_int($data['w_kootam'] ?? '');
+        $w_temple = sql_null_or_int($data['w_temple'] ?? '');
         $w_email = sql_null_or_str($data['w_email'] ?? '');
         $village = sql_null_or_str($data['village']);
         $taluk = sql_null_or_str($data['taluk']);
@@ -2005,16 +2005,39 @@ function display_hour($name = "birth_time", $default = '') {
         }
 
         function generate_member_id($family_id) {
+            global $con, $tbl_family;
+            
             $fam = get_member($family_id);
             $k_id = $fam['kattalai'];
             $kattalai = get_label($k_id);
-            $mem_no = 0;
             $area_code = $kattalai['order'];
             $max_no = get_max_mem_no($area_code);
+            
+            // Generate member_id and check for uniqueness
             $mem_id = $area_code . sprintf("%03d", $max_no);
+            
+            // Check if member_id already exists (excluding current record)
+            $check_sql = "SELECT id FROM $tbl_family WHERE member_id = ? AND id != ?";
+            $check_stmt = mysqli_prepare($con, $check_sql);
+            mysqli_stmt_bind_param($check_stmt, "si", $mem_id, $family_id);
+            mysqli_stmt_execute($check_stmt);
+            mysqli_stmt_store_result($check_stmt);
+            
+            // Keep incrementing until we find a unique member_id
+            while (mysqli_stmt_num_rows($check_stmt) > 0) {
+                mysqli_stmt_close($check_stmt);
+                $max_no++;
+                $mem_id = $area_code . sprintf("%03d", $max_no);
+                
+                $check_stmt = mysqli_prepare($con, $check_sql);
+                mysqli_stmt_bind_param($check_stmt, "si", $mem_id, $family_id);
+                mysqli_stmt_execute($check_stmt);
+                mysqli_stmt_store_result($check_stmt);
+            }
+            mysqli_stmt_close($check_stmt);
+            
             $data = array('member_no' => $max_no, 'member_id' => $mem_id);
             update_family_field($family_id, $data);
-            var_dump($kattalai['order']);
         }
          function generate_matri_no($m_id) {
             $max_no = get_max_mat_no();

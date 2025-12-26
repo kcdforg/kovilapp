@@ -636,7 +636,11 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                         </td>
                                         <td>
                                             <?php if (!empty($family['father_name'])): ?>
-                                                <?php echo htmlspecialchars($family['father_name']); ?>
+                                                <?php if (!empty($family['parent_id']) && $family['parent_id'] > 0): ?>
+                                                    <a href="viewmember.php?id=<?php echo $family['parent_id']; ?>"><?php echo htmlspecialchars($family['father_name']); ?></a>
+                                                <?php else: ?>
+                                                    <?php echo htmlspecialchars($family['father_name']); ?>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>

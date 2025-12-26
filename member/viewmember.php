@@ -9,6 +9,8 @@ $curr_page = 1;
 $offset = ($curr_page - 1) * ($rec_per_page);
 
 if (isset($_POST['action'])) {
+    global $con, $tbl_family;
+    
     if ($_POST['action'] == 'generate_id') {
         $member_id = isset($_POST['id']) ? $_POST['id'] : $id;
         generate_member_id($member_id);
@@ -42,6 +44,16 @@ if (isset($_POST['action'])) {
         }
         header("Location: viewmember.php?id=$id");
         exit();
+    } elseif ($_POST['action'] == 'clear_member_id') {
+        // Clear member_id and member_no using primary key from URL
+        $sql = "UPDATE $tbl_family SET member_id = '', member_no = 0 WHERE id = ?";
+        $stmt = mysqli_prepare($con, $sql);
+        mysqli_stmt_bind_param($stmt, "i", $id);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        
+        header("Location: viewmember.php?id=$id");
+        exit();
     }
 }
 
@@ -60,7 +72,7 @@ include('../includes/header.php');
 <style>
 .member-avatar {
     width: 140px;
-    height: 110px;
+    height: 160px;
     object-fit: cover;
     border-radius: 8px;
     border: 2px solid #e9ecef;
@@ -69,7 +81,7 @@ include('../includes/header.php');
 
 .member-avatar-placeholder {
     width: 140px;
-    height: 110px;
+    height: 160px;
     border-radius: 8px;
     border: 2px dashed #dee2e6;
     display: flex;
@@ -345,19 +357,20 @@ include('../includes/header.php');
                                                         <div class="data-label">Name:</div>
                                                         <div class="data-value"><?php echo htmlspecialchars($row['name'] ?? '-'); ?></div>
                                                     </div>
-                                                    <?php if (!empty($row['parent_id']) && $row['parent_id'] > 0): ?>
-                                                    <div class="data-item">
-                                                        <div class="data-label">Parent Family:</div>
-                                                        <div class="data-value">
-                                                            <a href="viewmember.php?id=<?php echo $row['parent_id']; ?>" class="btn btn-sm btn-outline-primary">
-                                                                <i class="bi bi-arrow-up-circle"></i> View Parent
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                    <?php endif; ?>
                                                     <div class="data-item">
                                                         <div class="data-label">Father's Name:</div>
-                                                        <div class="data-value"><?php echo htmlspecialchars($row['father_name'] ?? '-'); ?></div>
+                                                        <div class="data-value">
+                                                            <?php echo htmlspecialchars($row['father_name'] ?? '-'); ?>
+                                                            <?php if (!empty($row['parent_id']) && $row['parent_id'] > 0): ?>
+                                                            <a href="viewmember.php?id=<?php echo $row['parent_id']; ?>" class="btn btn-sm btn-outline-primary ms-2">
+                                                                <i class="bi bi-arrow-up-circle"></i> View Parent
+                                                            </a>
+                                                            <?php else: ?>
+                                                            <button type="button" class="btn btn-sm btn-outline-success ms-2" onclick="showAddParentModal()">
+                                                                <i class="bi bi-link"></i> Link Parent
+                                                            </button>
+                                                            <?php endif; ?>
+                                                        </div>
                                                     </div>
                                                     <div class="data-item">
                                                         <div class="data-label">Mother's Name:</div>
@@ -655,6 +668,12 @@ include('../includes/header.php');
                                                         <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#printIdModal">
                                                             <i class="bi bi-printer"></i> Print ID Card
                                                         </button>
+                                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to remove the Member ID?');">
+                                                            <input type="hidden" name="action" value="clear_member_id">
+                                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                                <i class="bi bi-trash"></i> Remove ID
+                                                            </button>
+                                                        </form>
                                                     </div>
                                                     </div>
                                                 <?php endif; ?>
@@ -3943,57 +3962,71 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Link Family Modal -->
 <div class="modal fade" id="linkFamilyModal" tabindex="-1" aria-labelledby="linkFamilyModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="linkFamilyModalLabel">
                     <i class="bi bi-link"></i> Link to Existing Family
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="linkChildId">
                 
+                <!-- Search Section -->
                 <div id="searchSection">
-                    <div class="mb-3">
-                        <label for="linkMemberId" class="form-label">Enter Member ID</label>
-                        <div class="input-group">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="linkMemberId" class="form-label">Member ID</label>
                             <input type="text" class="form-control" id="linkMemberId" placeholder="Enter Member ID">
-                            <button class="btn btn-primary" type="button" onclick="searchMemberById()">
-                                <i class="bi bi-search"></i> Search
-                            </button>
                         </div>
+                        <div class="col-md-6">
+                            <label for="linkSearchName" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="linkSearchName" placeholder="Enter Name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="linkSearchMobile" class="form-label">Mobile Number</label>
+                            <input type="text" class="form-control" id="linkSearchMobile" placeholder="Enter Mobile Number">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="linkSearchVillage" class="form-label">Village</label>
+                            <input type="text" class="form-control" id="linkSearchVillage" placeholder="Enter Village">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mb-3">
+                        <button type="button" class="btn btn-primary" onclick="searchFamilyToLink()">
+                            <i class="bi bi-search"></i> Search
+                        </button>
                     </div>
                 </div>
                 
-                <div id="memberPreview" class="d-none">
-                    <div class="alert alert-info">
-                        <h6 class="alert-heading">Member Details:</h6>
-                        <table class="table table-sm table-borderless mb-0">
-                            <tr>
-                                <td><strong>Name:</strong></td>
-                                <td id="previewName"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Father's Name:</strong></td>
-                                <td id="previewFatherName"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Mother's Name:</strong></td>
-                                <td id="previewMotherName"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Village:</strong></td>
-                                <td id="previewVillage"></td>
-                            </tr>
+                <!-- Search Results -->
+                <div id="linkSearchResults" class="d-none">
+                    <h6 class="mb-3">Search Results:</h6>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-hover table-bordered">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Select</th>
+                                    <th>Member ID</th>
+                                    <th>Name</th>
+                                    <th>Father's Name</th>
+                                    <th>Mobile</th>
+                                    <th>Village</th>
+                                </tr>
+                            </thead>
+                            <tbody id="linkSearchResultsBody">
+                            </tbody>
                         </table>
                     </div>
                 </div>
                 
-                <div id="memberNotFound" class="alert alert-danger d-none">
-                    Member not found with this ID.
+                <!-- No Results Message -->
+                <div id="memberNotFound" class="alert alert-warning d-none">
+                    <i class="bi bi-exclamation-triangle"></i> No members found matching your search criteria.
                 </div>
                 
+                <!-- Success Message -->
                 <div id="linkSuccessMessage" class="d-none">
                     <div class="alert alert-success">
                         <h6 class="alert-heading"><i class="bi bi-check-circle"></i> Success!</h6>
@@ -4014,64 +4047,187 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Add Parent Modal -->
+<div class="modal fade" id="addParentModal" tabindex="-1" aria-labelledby="addParentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="addParentModalLabel">
+                    <i class="bi bi-person-plus"></i> Add Parent Family
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="currentMemberId" value="<?php echo $id; ?>">
+                
+                <!-- Search Section -->
+                <div id="parentSearchSection">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="searchParentMemberId" class="form-label">Member ID</label>
+                            <input type="text" class="form-control" id="searchParentMemberId" placeholder="Enter Member ID">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="searchParentName" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="searchParentName" placeholder="Enter Name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="searchParentMobile" class="form-label">Mobile Number</label>
+                            <input type="text" class="form-control" id="searchParentMobile" placeholder="Enter Mobile Number">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="searchParentVillage" class="form-label">Village</label>
+                            <input type="text" class="form-control" id="searchParentVillage" placeholder="Enter Village">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mb-3">
+                        <button type="button" class="btn btn-primary" onclick="searchParent()">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Search Results -->
+                <div id="parentSearchResults" class="d-none">
+                    <h6 class="mb-3">Search Results:</h6>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-hover table-bordered">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Select</th>
+                                    <th>Member ID</th>
+                                    <th>Name</th>
+                                    <th>Father's Name</th>
+                                    <th>Mobile</th>
+                                    <th>Village</th>
+                                </tr>
+                            </thead>
+                            <tbody id="parentSearchResultsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- No Results Message -->
+                <div id="parentNoResults" class="alert alert-warning d-none">
+                    <i class="bi bi-exclamation-triangle"></i> No members found matching your search criteria.
+                </div>
+                
+                <!-- Success Message -->
+                <div id="parentLinkSuccessMessage" class="d-none">
+                    <div class="alert alert-success">
+                        <h6 class="alert-heading"><i class="bi bi-check-circle"></i> Success!</h6>
+                        <p class="mb-0">Parent family linked successfully!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelAddParentBtn">Cancel</button>
+                <button type="button" class="btn btn-success d-none" id="confirmAddParentBtn" onclick="confirmAddParent()">
+                    <i class="bi bi-link"></i> Link as Parent
+                </button>
+                <button type="button" class="btn btn-primary d-none" id="okAddParentBtn" onclick="closeAddParentModal()">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let selectedFamilyId = null;
+let selectedParentId = null;
 
 function linkfamily(childId) {
+    // Reset form
     document.getElementById('linkChildId').value = childId;
     document.getElementById('linkMemberId').value = '';
+    document.getElementById('linkSearchName').value = '';
+    document.getElementById('linkSearchMobile').value = '';
+    document.getElementById('linkSearchVillage').value = '';
     document.getElementById('searchSection').classList.remove('d-none');
-    document.getElementById('memberPreview').classList.add('d-none');
+    document.getElementById('linkSearchResults').classList.add('d-none');
     document.getElementById('memberNotFound').classList.add('d-none');
+    document.getElementById('linkSuccessMessage').classList.add('d-none');
     document.getElementById('confirmLinkBtn').classList.add('d-none');
+    document.getElementById('cancelLinkBtn').classList.remove('d-none');
+    document.getElementById('okLinkBtn').classList.add('d-none');
+    document.getElementById('linkSearchResultsBody').innerHTML = '';
     selectedFamilyId = null;
     
     new bootstrap.Modal(document.getElementById('linkFamilyModal')).show();
 }
 
-function searchMemberById() {
+function searchFamilyToLink() {
     const memberId = document.getElementById('linkMemberId').value.trim();
+    const name = document.getElementById('linkSearchName').value.trim();
+    const mobile = document.getElementById('linkSearchMobile').value.trim();
+    const village = document.getElementById('linkSearchVillage').value.trim();
     
-    if (!memberId) {
-        alert('Please enter a Member ID');
+    if (!memberId && !name && !mobile && !village) {
+        alert('Please enter at least one search criteria');
         return;
     }
     
-    // Search for member
-    fetch('search_member_by_id.php?member_id=' + encodeURIComponent(memberId))
+    // Build query string
+    const params = new URLSearchParams();
+    if (memberId) params.append('member_id', memberId);
+    if (name) params.append('name', name);
+    if (mobile) params.append('mobile', mobile);
+    if (village) params.append('village', village);
+    
+    // Search for members
+    fetch('search_parent.php?' + params.toString())
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                // Show member preview and hide search section
-                document.getElementById('previewName').textContent = data.member.name || '-';
-                document.getElementById('previewFatherName').textContent = data.member.father_name || '-';
-                document.getElementById('previewMotherName').textContent = data.member.mother_name || '-';
-                document.getElementById('previewVillage').textContent = data.member.village || '-';
-                
-                document.getElementById('searchSection').classList.add('d-none');
-                document.getElementById('memberPreview').classList.remove('d-none');
-                document.getElementById('memberNotFound').classList.add('d-none');
-                document.getElementById('confirmLinkBtn').classList.remove('d-none');
-                
-                selectedFamilyId = data.member.id;
+            if (data.success && data.members.length > 0) {
+                displayLinkSearchResults(data.members);
             } else {
-                document.getElementById('memberPreview').classList.add('d-none');
+                document.getElementById('linkSearchResults').classList.add('d-none');
                 document.getElementById('memberNotFound').classList.remove('d-none');
                 document.getElementById('confirmLinkBtn').classList.add('d-none');
-                selectedFamilyId = null;
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error searching for member');
+            alert('Error searching for members');
         });
+}
+
+function displayLinkSearchResults(members) {
+    const tbody = document.getElementById('linkSearchResultsBody');
+    tbody.innerHTML = '';
+    
+    members.forEach(member => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="text-center">
+                <input type="radio" name="selectedFamily" value="${member.id}" 
+                       onchange="selectFamilyToLink(${member.id})" class="form-check-input">
+            </td>
+            <td>${member.member_id || '-'}</td>
+            <td>${member.name || '-'}</td>
+            <td>${member.father_name || '-'}</td>
+            <td>${member.mobile_no || '-'}</td>
+            <td>${member.village || '-'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    document.getElementById('linkSearchResults').classList.remove('d-none');
+    document.getElementById('memberNotFound').classList.add('d-none');
+}
+
+function selectFamilyToLink(familyId) {
+    selectedFamilyId = familyId;
+    document.getElementById('confirmLinkBtn').classList.remove('d-none');
 }
 
 function confirmLinkFamily() {
     const childId = document.getElementById('linkChildId').value;
     
     if (!selectedFamilyId) {
-        showModalMessage('Please search and select a member first', 'warning');
+        alert('Please search and select a family first');
         return;
     }
     
@@ -4093,7 +4249,7 @@ function confirmLinkFamily() {
         if (data.success) {
             // Hide all sections and show success message
             document.getElementById('searchSection').classList.add('d-none');
-            document.getElementById('memberPreview').classList.add('d-none');
+            document.getElementById('linkSearchResults').classList.add('d-none');
             document.getElementById('memberNotFound').classList.add('d-none');
             document.getElementById('linkSuccessMessage').classList.remove('d-none');
             
@@ -4102,14 +4258,14 @@ function confirmLinkFamily() {
             document.getElementById('cancelLinkBtn').classList.add('d-none');
             document.getElementById('okLinkBtn').classList.remove('d-none');
         } else {
-            showModalMessage('Error: ' + data.message, 'danger');
+            alert('Error: ' + data.message);
             confirmBtn.disabled = false;
             confirmBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Link';
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showModalMessage('Error linking family', 'danger');
+        alert('Error linking family');
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Link';
     });
@@ -4368,6 +4524,148 @@ function printMemberDetails() {
         printWindow.print();
         printWindow.close();
     }, 250);
+}
+
+// ============================================
+// ADD PARENT FUNCTIONS
+// ============================================
+
+function showAddParentModal() {
+    // Reset form
+    document.getElementById('searchParentMemberId').value = '';
+    document.getElementById('searchParentName').value = '';
+    document.getElementById('searchParentMobile').value = '';
+    document.getElementById('searchParentVillage').value = '';
+    document.getElementById('parentSearchResults').classList.add('d-none');
+    document.getElementById('parentNoResults').classList.add('d-none');
+    document.getElementById('parentLinkSuccessMessage').classList.add('d-none');
+    document.getElementById('parentSearchSection').classList.remove('d-none');
+    document.getElementById('confirmAddParentBtn').classList.add('d-none');
+    document.getElementById('cancelAddParentBtn').classList.remove('d-none');
+    document.getElementById('okAddParentBtn').classList.add('d-none');
+    document.getElementById('parentSearchResultsBody').innerHTML = '';
+    selectedParentId = null;
+    
+    new bootstrap.Modal(document.getElementById('addParentModal')).show();
+}
+
+function searchParent() {
+    const memberId = document.getElementById('searchParentMemberId').value.trim();
+    const name = document.getElementById('searchParentName').value.trim();
+    const mobile = document.getElementById('searchParentMobile').value.trim();
+    const village = document.getElementById('searchParentVillage').value.trim();
+    
+    if (!memberId && !name && !mobile && !village) {
+        alert('Please enter at least one search criteria');
+        return;
+    }
+    
+    // Build query string
+    const params = new URLSearchParams();
+    if (memberId) params.append('member_id', memberId);
+    if (name) params.append('name', name);
+    if (mobile) params.append('mobile', mobile);
+    if (village) params.append('village', village);
+    
+    // Search for members
+    fetch('search_parent.php?' + params.toString())
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.members.length > 0) {
+                displayParentSearchResults(data.members);
+            } else {
+                document.getElementById('parentSearchResults').classList.add('d-none');
+                document.getElementById('parentNoResults').classList.remove('d-none');
+                document.getElementById('confirmAddParentBtn').classList.add('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error searching for members');
+        });
+}
+
+function displayParentSearchResults(members) {
+    const tbody = document.getElementById('parentSearchResultsBody');
+    tbody.innerHTML = '';
+    
+    members.forEach(member => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="text-center">
+                <input type="radio" name="selectedParent" value="${member.id}" 
+                       onchange="selectParent(${member.id})" class="form-check-input">
+            </td>
+            <td>${member.member_id || '-'}</td>
+            <td>${member.name || '-'}</td>
+            <td>${member.father_name || '-'}</td>
+            <td>${member.mobile_no || '-'}</td>
+            <td>${member.village || '-'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    document.getElementById('parentSearchResults').classList.remove('d-none');
+    document.getElementById('parentNoResults').classList.add('d-none');
+}
+
+function selectParent(parentId) {
+    selectedParentId = parentId;
+    document.getElementById('confirmAddParentBtn').classList.remove('d-none');
+}
+
+function confirmAddParent() {
+    if (!selectedParentId) {
+        alert('Please select a parent family');
+        return;
+    }
+    
+    const currentMemberId = document.getElementById('currentMemberId').value;
+    const confirmBtn = document.getElementById('confirmAddParentBtn');
+    
+    // Disable button and show loading
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Linking...';
+    
+    // Link parent to family
+    fetch('link_parent.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'member_id=' + currentMemberId + '&parent_id=' + selectedParentId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Hide all sections and show success message
+            document.getElementById('parentSearchSection').classList.add('d-none');
+            document.getElementById('parentSearchResults').classList.add('d-none');
+            document.getElementById('parentNoResults').classList.add('d-none');
+            document.getElementById('parentLinkSuccessMessage').classList.remove('d-none');
+            
+            // Hide confirm button and cancel button, show OK button
+            document.getElementById('confirmAddParentBtn').classList.add('d-none');
+            document.getElementById('cancelAddParentBtn').classList.add('d-none');
+            document.getElementById('okAddParentBtn').classList.remove('d-none');
+        } else {
+            alert('Error: ' + data.message);
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-link"></i> Link as Parent';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error linking parent family');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="bi bi-link"></i> Link as Parent';
+    });
+}
+
+function closeAddParentModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addParentModal'));
+    modal.hide();
+    location.reload();
 }
 </script>
 
