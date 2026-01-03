@@ -819,9 +819,201 @@ mysqli_stmt_close($total_amount_stmt);
     <script>
         // Used receipt numbers data from PHP
         const usedReceipts = <?php echo json_encode($used_receipts); ?>;
+        const eventId = <?php echo $event_id; ?>;
         
         // Handle book type selection for Add Receipt Book modal
         document.addEventListener('DOMContentLoaded', function() {
+            // Handle Add Payment Modal - reset and setup
+            const addPaymentModal = document.getElementById('addPaymentModal');
+            if (addPaymentModal) {
+                addPaymentModal.addEventListener('show.bs.modal', function() {
+                    // Reset modal to step 1
+                    document.getElementById('paymentMemberIdStep').style.display = 'block';
+                    document.getElementById('paymentDetailsStep').style.display = 'none';
+                    document.getElementById('submitPaymentBtn').style.display = 'none';
+                    document.getElementById('paymentMemberIdInput').value = '';
+                    document.getElementById('paymentMemberSearchError').style.display = 'none';
+                    document.getElementById('bookDetailsSection').style.display = 'none';
+                    document.getElementById('receiptVerifyError').style.display = 'none';
+                    document.getElementById('addPaymentForm').reset();
+                    
+                    // Focus on member ID input
+                    setTimeout(() => {
+                        document.getElementById('paymentMemberIdInput').focus();
+                    }, 500);
+                });
+            }
+            
+            // Handle member ID search
+            const paymentMemberIdInput = document.getElementById('paymentMemberIdInput');
+            const searchPaymentMemberBtn = document.getElementById('searchPaymentMemberBtn');
+            
+            // Search on button click
+            searchPaymentMemberBtn.addEventListener('click', function() {
+                searchPaymentMember();
+            });
+            
+            // Search on Enter key
+            paymentMemberIdInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchPaymentMember();
+                }
+            });
+            
+            // Change member button
+            document.getElementById('changePaymentMemberBtn').addEventListener('click', function() {
+                document.getElementById('paymentMemberIdStep').style.display = 'block';
+                document.getElementById('paymentDetailsStep').style.display = 'none';
+                document.getElementById('submitPaymentBtn').style.display = 'none';
+                document.getElementById('bookDetailsSection').style.display = 'none';
+                document.getElementById('paymentMemberIdInput').focus();
+            });
+            
+            // Handle receipt number verification
+            const paymentReceiptNoInput = document.getElementById('paymentReceiptNoInput');
+            const verifyReceiptBtn = document.getElementById('verifyReceiptBtn');
+            
+            verifyReceiptBtn.addEventListener('click', function() {
+                verifyReceiptNumber();
+            });
+            
+            paymentReceiptNoInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    verifyReceiptNumber();
+                }
+            });
+            
+            // Search member function
+            function searchPaymentMember() {
+                const memberId = paymentMemberIdInput.value.trim();
+                const errorDiv = document.getElementById('paymentMemberSearchError');
+                
+                if (!memberId) {
+                    errorDiv.textContent = 'Please enter a Member ID';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Show loading
+                searchPaymentMemberBtn.disabled = true;
+                searchPaymentMemberBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Searching...';
+                errorDiv.style.display = 'none';
+                
+                // Fetch member details
+                fetch('../member/get_member_by_id.php?member_id=' + encodeURIComponent(memberId))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Populate member details
+                            document.getElementById('paymentMemberIdHidden').value = data.member.id;
+                            document.getElementById('displayPaymentMemberId').textContent = data.member.member_id;
+                            document.getElementById('displayPaymentMemberName').textContent = data.member.name;
+                            
+                            // Build address string
+                            let addressParts = [];
+                            if (data.member.current_address) addressParts.push(data.member.current_address);
+                            if (data.member.village) addressParts.push(data.member.village);
+                            if (data.member.district) addressParts.push(data.member.district);
+                            const address = addressParts.join(', ') || 'No address on record';
+                            
+                            document.getElementById('displayPaymentMemberAddress').textContent = address;
+                            document.getElementById('paymentAddress').value = address;
+                            
+                            // Show step 2
+                            document.getElementById('paymentMemberIdStep').style.display = 'none';
+                            document.getElementById('paymentDetailsStep').style.display = 'block';
+                            
+                            // Focus on receipt number
+                            setTimeout(() => {
+                                document.getElementById('paymentReceiptNoInput').focus();
+                            }, 300);
+                        } else {
+                            errorDiv.textContent = data.message || 'Member not found';
+                            errorDiv.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        errorDiv.textContent = 'Error fetching member details. Please try again.';
+                        errorDiv.style.display = 'block';
+                        console.error('Error:', error);
+                    })
+                    .finally(() => {
+                        searchPaymentMemberBtn.disabled = false;
+                        searchPaymentMemberBtn.innerHTML = '<i class="bi bi-search me-2"></i> Search Member';
+                    });
+            }
+            
+            // Verify receipt number function
+            function verifyReceiptNumber() {
+                const receiptNo = paymentReceiptNoInput.value.trim();
+                const errorDiv = document.getElementById('receiptVerifyError');
+                
+                if (!receiptNo || receiptNo <= 0) {
+                    errorDiv.textContent = 'Please enter a valid receipt number';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Show loading
+                verifyReceiptBtn.disabled = true;
+                verifyReceiptBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Verifying...';
+                errorDiv.style.display = 'none';
+                
+                // Fetch book details for this receipt
+                fetch('get_book_by_receipt.php?receipt_no=' + receiptNo + '&event_id=' + eventId)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Populate book details
+                            document.getElementById('paymentBookIdHidden').value = data.book.id;
+                            document.getElementById('paymentReceiptNoHidden').value = receiptNo;
+                            document.getElementById('displayBookNo').textContent = data.book.book_no;
+                            document.getElementById('displayReceiptNo').textContent = receiptNo;
+                            
+                            // Handle amount field based on book type
+                            const amountInput = document.getElementById('paymentAmountInput');
+                            const amountSymbol = document.getElementById('amountCurrencySymbol');
+                            const amountHelper = document.getElementById('amountHelper');
+                            
+                            if (data.book.is_fixed && data.book.denomination) {
+                                // Fixed denomination - make readonly with dull color
+                                amountInput.value = data.book.denomination;
+                                amountInput.readOnly = true;
+                                amountInput.classList.add('bg-secondary', 'bg-opacity-25', 'text-muted');
+                                amountInput.style.cursor = 'not-allowed';
+                                amountSymbol.classList.add('bg-secondary', 'text-white-50');
+                                amountHelper.innerHTML = '<i class="bi bi-lock"></i> Fixed denomination: ₹' + data.book.denomination;
+                            } else {
+                                // Variable denomination - editable
+                                amountInput.value = '';
+                                amountInput.readOnly = false;
+                                amountInput.classList.remove('bg-secondary', 'bg-opacity-25', 'text-muted');
+                                amountInput.style.cursor = '';
+                                amountSymbol.classList.remove('bg-secondary', 'text-white-50');
+                                amountHelper.textContent = 'Enter the payment amount';
+                            }
+                            
+                            // Show book details and submit button
+                            document.getElementById('bookDetailsSection').style.display = 'block';
+                            document.getElementById('submitPaymentBtn').style.display = 'block';
+                        } else {
+                            errorDiv.textContent = data.message || 'Receipt number not found';
+                            errorDiv.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        errorDiv.textContent = 'Error verifying receipt number. Please try again.';
+                        errorDiv.style.display = 'block';
+                        console.error('Error:', error);
+                    })
+                    .finally(() => {
+                        verifyReceiptBtn.disabled = false;
+                        verifyReceiptBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i> Verify Receipt Number';
+                    });
+            }
+            
             // Use event delegation for the book type selection
             document.addEventListener('change', function(event) {
                 if (event.target.id === 'bookType') {
@@ -865,71 +1057,19 @@ mysqli_stmt_close($total_amount_stmt);
                 });
             }
             
-            // Handle book selection in Add Payment modal
-            const paymentBookNo = document.getElementById('paymentBookNo');
-            const paymentAmount = document.getElementById('paymentAmount');
-            const paymentReceiptNo = document.getElementById('paymentReceiptNo');
+            // Filter by denomination function
+            window.filterByDenomination = function(denomination) {
+                const currentUrl = new URL(window.location.href);
+                if (denomination) {
+                    currentUrl.searchParams.set('denomination', denomination);
+                } else {
+                    currentUrl.searchParams.delete('denomination');
+                }
+                currentUrl.searchParams.set('tab', 'members');
+                currentUrl.searchParams.delete('page'); // Reset to first page
+                window.location.href = currentUrl.toString();
+            };
             
-            if (paymentBookNo && paymentAmount && paymentReceiptNo) {
-                paymentBookNo.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    const bookType = selectedOption.getAttribute('data-book-type');
-                    const denomination = selectedOption.getAttribute('data-denomination');
-                    
-                    console.log('Book selected:', bookType, denomination); // Debug
-                    
-                    if (bookType === 'fixed' && denomination) {
-                        // Auto-populate and make readonly for fixed denomination books
-                        paymentAmount.value = denomination;
-                        paymentAmount.readOnly = true;
-                        paymentAmount.style.backgroundColor = '#f8f9fa';
-                        paymentAmount.style.color = '#6c757d';
-                        console.log('Amount auto-populated:', denomination); // Debug
-                    } else {
-                        // Enable amount field for generic books
-                        paymentAmount.value = '';
-                        paymentAmount.readOnly = false;
-                        paymentAmount.style.backgroundColor = '';
-                        paymentAmount.style.color = '';
-                        console.log('Amount field enabled for variable amounts'); // Debug
-                    }
-                    
-                    // Populate receipt number dropdown based on selected book
-                    const receiptNoOptions = paymentReceiptNo.options;
-                    receiptNoOptions.length = 1; // Clear existing options
-                    receiptNoOptions[0].text = "Select Receipt No";
-                    
-                    if (this.value) {
-                        const bookId = this.value;
-                        const startReceiptNo = parseInt(selectedOption.getAttribute('data-start-receipt-no'));
-                        const endReceiptNo = parseInt(selectedOption.getAttribute('data-end-receipt-no'));
-                        const usedReceiptsForBook = usedReceipts[bookId] || [];
-                        
-                        console.log('Book selected:', bookId, 'Range:', startReceiptNo, '-', endReceiptNo, 'Used:', usedReceiptsForBook);
-                        
-                        // Generate available receipt numbers
-                        for (let i = startReceiptNo; i <= endReceiptNo; i++) {
-                            if (!usedReceiptsForBook.includes(i)) {
-                                const option = document.createElement('option');
-                                option.value = i;
-                                option.text = i;
-                                paymentReceiptNo.appendChild(option);
-                            }
-                        }
-                        
-                        // Check if any receipts are available
-                        if (paymentReceiptNo.options.length === 1) {
-                            const option = document.createElement('option');
-                            option.value = '';
-                            option.text = 'No available receipts';
-                            option.disabled = true;
-                            paymentReceiptNo.appendChild(option);
-                        }
-                    } else {
-                        receiptNoOptions[0].text = "Select Book First";
-                    }
-                });
-            }
             
             // Handle bulk book type selection
             const bulkBookType = document.getElementById('bulkBookType');
@@ -960,70 +1100,143 @@ mysqli_stmt_close($total_amount_stmt);
     <div class="modal fade" id="addPaymentModal" tabindex="-1" aria-labelledby="addPaymentModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="addPaymentModalLabel">
-                        <i class="bi bi-plus"></i> Add Payment
+                        <i class="bi bi-plus-circle"></i> Add New Payment
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="POST" action="">
+                <form method="POST" action="" id="addPaymentForm">
                     <input type="hidden" name="action" value="add_payment">
+                    <input type="hidden" name="member_id" id="paymentMemberIdHidden">
+                    <input type="hidden" name="book_no" id="paymentBookIdHidden">
+                    <input type="hidden" name="receipt_no" id="paymentReceiptNoHidden">
+                    
                     <div class="modal-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Member</label>
-                                <select class="form-select select2" name="member_id" required>
-                                    <option value="">Select Member</option>
-                                    <?php foreach ($members as $member): ?>
-                                        <option value="<?php echo $member['id']; ?>">
-                                            <?php echo htmlspecialchars($member['name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                        <!-- Step 1: Enter Member ID -->
+                        <div id="paymentMemberIdStep">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Step 1:</strong> Enter the Member ID to continue
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Date</label>
-                                <input type="date" class="form-control" name="date" value="<?php echo date('Y-m-d'); ?>" required>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    Member ID <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-person-badge"></i>
+                                    </span>
+                                    <input type="text" class="form-control form-control-lg" id="paymentMemberIdInput" 
+                                           placeholder="Enter Member ID" autocomplete="off">
+                                </div>
+                                <small class="text-muted">Enter the member ID and press Enter or click Search</small>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Book No</label>
-                                <select class="form-select" name="book_no" id="paymentBookNo" required>
-                                    <option value="">Select Book</option>
-                                    <?php foreach ($books as $book): ?>
-                                        <option value="<?php echo $book['id']; ?>" 
-                                                data-book-type="<?php echo $book['book_type']; ?>"
-                                                data-denomination="<?php echo htmlspecialchars($book['denomination']); ?>"
-                                                data-start-receipt-no="<?php echo $book['start_receipt_no']; ?>"
-                                                data-end-receipt-no="<?php echo $book['end_receipt_no']; ?>">
-                                            Book <?php echo $book['book_no']; ?> (<?php echo $book['start_receipt_no']; ?>-<?php echo $book['end_receipt_no']; ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                            <div class="d-grid">
+                                <button type="button" class="btn btn-primary btn-lg" id="searchPaymentMemberBtn">
+                                    <i class="bi bi-search me-2"></i> Search Member
+                                </button>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Receipt No</label>
-                                <select class="form-select" name="receipt_no" id="paymentReceiptNo" required>
-                                    <option value="">Select Book First</option>
-                                </select>
+                            <div id="paymentMemberSearchError" class="alert alert-danger mt-3" style="display: none;"></div>
+                        </div>
+                        
+                        <!-- Step 2: Receipt Details -->
+                        <div id="paymentDetailsStep" style="display: none;">
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle me-2"></i>
+                                <strong>Step 2:</strong> Enter receipt details and complete payment
                             </div>
-                            <div class="col-md-12">
-                                <label class="form-label">Address</label>
-                                <input type="text" class="form-control" name="address" placeholder="Enter address as written on receipt">
+                            
+                            <!-- Member Information Card -->
+                            <div class="card bg-light mb-3">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-end mb-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="changePaymentMemberBtn">
+                                            <i class="bi bi-arrow-left"></i> Change
+                                        </button>
+                                    </div>
+                                    <div class="mb-1">
+                                        <span class="fw-bold">Member ID:</span>
+                                        <span class="text-primary ms-2" id="displayPaymentMemberId"></span>
+                                        <span class="fw-bold ms-4">Name:</span>
+                                        <span class="ms-2" id="displayPaymentMemberName"></span>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">Address:</div>
+                                        <div class="ms-2" id="displayPaymentMemberAddress"></div>
+                                        <input type="hidden" name="address" id="paymentAddress">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-12">
-                                <label class="form-label">Remarks</label>
-                                <textarea class="form-control" name="remarks" rows="3" placeholder="Optional remarks"></textarea>
+                            
+                            <!-- Receipt Number Input -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    Receipt Number <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-receipt"></i>
+                                    </span>
+                                    <input type="number" class="form-control" id="paymentReceiptNoInput" 
+                                           placeholder="Enter Receipt Number" min="1">
+                                    <button type="button" class="btn btn-info" id="verifyReceiptBtn">
+                                        <i class="bi bi-check-circle me-1"></i> Verify
+                                    </button>
+                                </div>
+                                <small class="text-muted">Enter the receipt number and click Verify or press Enter</small>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Amount</label>
-                                <input type="number" class="form-control" name="amount" id="paymentAmount" step="0.01" min="0" required>
+                            <div id="receiptVerifyError" class="alert alert-danger" style="display: none;"></div>
+                            
+                            <!-- Book Details (shown after receipt verification) -->
+                            <div id="bookDetailsSection" style="display: none;">
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body py-2">
+                                        <div class="mb-1">
+                                            <span class="fw-bold">Book No:</span>
+                                            <span class="text-info ms-2" id="displayBookNo"></span>
+                                            <span class="fw-bold ms-4">Receipt No:</span>
+                                            <span class="ms-2" id="displayReceiptNo"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Payment Details -->
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold mb-1">
+                                            Amount <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group" id="amountInputGroup">
+                                            <span class="input-group-text" id="amountCurrencySymbol">₹</span>
+                                            <input type="number" class="form-control" name="amount" id="paymentAmountInput" 
+                                                   step="0.01" min="0" required>
+                                        </div>
+                                        <small class="text-muted" id="amountHelper"></small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold mb-1">
+                                            Payment Date <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control" name="date" 
+                                               value="<?php echo date('Y-m-d'); ?>" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold mb-1">Remarks</label>
+                                        <textarea class="form-control" name="remarks" rows="2" 
+                                                  placeholder="Enter any additional remarks (optional)"></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Payment
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-success" id="submitPaymentBtn" style="display: none;">
+                            <i class="bi bi-check-circle"></i> Save Payment
                         </button>
                     </div>
                 </form>

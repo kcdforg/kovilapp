@@ -30,6 +30,14 @@ $tbl_receipt_books = 'receipt_books';
 $tbl_member_subscriptions = 'member_subscriptions';
 $tbl_receipt_details = 'receipt_details';
 
+// Settings Table
+$tbl_settings = 'settings';
+
+// Group Tables
+$tbl_group_types = 'group_types';
+$tbl_groups = 'groups';
+$tbl_member_groups = 'member_groups';
+
 // Dynamically determine the protocol
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 

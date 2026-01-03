@@ -36,7 +36,7 @@ include('../includes/header.php');
 <?php
 //var_dump($_POST);
 
-$rec_per_page = 25;
+$rec_per_page = get_setting_int('members_per_page', 25);
 $curr_page = 1;
 $offset = ($curr_page - 1) * ($rec_per_page);
 

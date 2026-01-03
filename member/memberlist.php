@@ -4,8 +4,8 @@ include('../init.php');
 // Check if user is logged in
 check_login();
 
-// Pagination setup
-$per_page = 25;
+// Pagination setup - use setting from database
+$per_page = get_setting_int('members_per_page', 25);
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 if ($page < 1) $page = 1;
 $offset = ($page - 1) * $per_page;
@@ -639,7 +639,7 @@ if (isset($_GET['error']) && $_GET['error'] == '1') {
                                                 <?php if (!empty($family['parent_id']) && $family['parent_id'] > 0): ?>
                                                     <a href="viewmember.php?id=<?php echo $family['parent_id']; ?>"><?php echo htmlspecialchars($family['father_name']); ?></a>
                                                 <?php else: ?>
-                                                    <?php echo htmlspecialchars($family['father_name']); ?>
+                                                <?php echo htmlspecialchars($family['father_name']); ?>
                                                 <?php endif; ?>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>

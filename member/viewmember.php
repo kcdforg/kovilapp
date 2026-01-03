@@ -680,6 +680,54 @@ include('../includes/header.php');
                                         </div>
                                     </div>
 
+                                    <!-- Group Assignments Section -->
+                                    <?php 
+                                    $member_groups = get_member_groups($id);
+                                    $group_types_display = get_group_types(true);
+                                    if (!empty($group_types_display)) {
+                                    ?>
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Group Assignments</h6>
+                                            <a href="updatemember.php?id=<?php echo $id; ?>" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                        </div>
+                                        <div class="card-body">
+                                            <?php 
+                                            $has_groups = false;
+                                            foreach ($group_types_display as $type) {
+                                                $assigned_group = null;
+                                                foreach ($member_groups as $mg) {
+                                                    if ($mg['group_type_id'] == $type['id']) {
+                                                        $assigned_group = get_group($mg['group_id']);
+                                                        break;
+                                                    }
+                                                }
+                                                
+                                                echo '<div class="data-item">';
+                                                echo '<div class="data-label">' . htmlspecialchars($type['name']) . ':</div>';
+                                                echo '<div class="data-value">';
+                                                if ($assigned_group) {
+                                                    $has_groups = true;
+                                                    echo '<a href="../groups/view.php?type_id=' . $type['id'] . '&group_id=' . $assigned_group['id'] . '" class="text-decoration-none">';
+                                                    echo '<span class="badge bg-primary">' . htmlspecialchars($assigned_group['name']) . '</span>';
+                                                    echo '</a>';
+                                                } else {
+                                                    echo '<span class="text-muted">Not assigned</span>';
+                                                }
+                                                echo '</div>';
+                                                echo '</div>';
+                                            }
+                                            
+                                            if (!$has_groups) {
+                                                echo '<p class="text-muted mb-0"><small>No groups assigned yet. <a href="updatemember.php?id=' . $id . '">Edit member</a> to assign groups.</small></p>';
+                                            }
+                                            ?>
+                                        </div>
+                                    </div>
+                                    <?php } ?>
+
                                     <!-- Address Section -->
                                     <div class="card">
                                         <div class="card-header">
@@ -4675,7 +4723,7 @@ function closeAddParentModal() {
         <!-- Header -->
         <div style="text-align: center; border-bottom: 3px solid #333; padding-bottom: 15px; margin-bottom: 25px;">
             <h2 style="margin: 0; color: #333;">குடும்ப விவரம் / Family Details</h2>
-            <p style="margin: 5px 0 0 0; color: #666;">அருள்மிகு புது வெங்கரை அம்மன் கோயில்</p>
+            <p style="margin: 5px 0 0 0; color: #666;"><?php echo htmlspecialchars($org_name); ?></p>
         </div>
 
         <!-- Member ID & Family Name -->

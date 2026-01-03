@@ -391,3 +391,6 @@ Your migration is successful when:
 
 **Need Help?** Review the comments in `migration_old_to_new.sql` for detailed technical information about each migration step.
 
+
+
+

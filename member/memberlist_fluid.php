@@ -5,7 +5,7 @@ include('../init.php');
 check_login();
 
 // Pagination setup
-$per_page = 25;
+$per_page = get_setting_int('members_per_page', 25);
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 if ($page < 1) $page = 1;
 $offset = ($page - 1) * $per_page;

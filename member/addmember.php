@@ -42,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         'k_village' => $_POST['k_village'] ?? '',
         'pudavai' => $_POST['pudavai'] ?? '',
         'remarks' => $_POST['remarks'] ?? '',
-        'ic' => $_POST['ic'] ?? '',
         'same_as_permanent' => isset($_POST['same_as_permanent']) ? 1 : 0,
         'created_by' => $_SESSION['user_id'] ?? 1,
         'created_date' => date('Y-m-d H:i:s')
@@ -62,52 +61,77 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $member_data['w_temple'] = $_POST['w_temple'] ?? '';
     }
     
-    $result = add_member($member_data);
+    // Validate required groups before adding member
+    $group_types = get_group_types(true);
+    $group_validation_error = false;
     
-    if ($result) {
-        $new_family_id = $result; // add_member returns the new family ID
-        
-        // If this family is being added for a child, link them
-        if (!empty($_POST['child_id'])) {
-            $child_id = $_POST['child_id'];
-            
-            // Get parent family ID from child record
-            global $con, $tbl_child, $tbl_family;
-            $sql = "SELECT father_id FROM $tbl_child WHERE id = ?";
-            $stmt = mysqli_prepare($con, $sql);
-            mysqli_stmt_bind_param($stmt, 'i', $child_id);
-            mysqli_stmt_execute($stmt);
-            $result_child = mysqli_stmt_get_result($stmt);
-            $child_data = mysqli_fetch_assoc($result_child);
-            mysqli_stmt_close($stmt);
-            
-            if ($child_data) {
-                $parent_family_id = $child_data['father_id'];
-                
-                // Link child to new family
-                $sql = "UPDATE $tbl_child SET fam_id = ? WHERE id = ?";
-                $stmt = mysqli_prepare($con, $sql);
-                mysqli_stmt_bind_param($stmt, 'ii', $new_family_id, $child_id);
-                mysqli_stmt_execute($stmt);
-                mysqli_stmt_close($stmt);
-                
-                // Set parent_id for new family
-                $sql = "UPDATE $tbl_family SET parent_id = ? WHERE id = ?";
-                $stmt = mysqli_prepare($con, $sql);
-                mysqli_stmt_bind_param($stmt, 'ii', $parent_family_id, $new_family_id);
-                mysqli_stmt_execute($stmt);
-                mysqli_stmt_close($stmt);
-                
-                // Regenerate family tree
-                regenerateFamilyTree($parent_family_id);
+    foreach ($group_types as $type) {
+        if ($type['is_required'] == 1) {
+            $group_field = 'group_' . $type['id'];
+            if (empty($_POST[$group_field])) {
+                $error_message = 'Please select ' . htmlspecialchars($type['name']) . ' (required).';
+                $group_validation_error = true;
+                break;
             }
         }
+    }
+    
+    if (!$group_validation_error) {
+        $result = add_member($member_data);
         
-        $success_message = 'Member added successfully!';
-        // Redirect to member list after 2 seconds
-        header("refresh:2;url=memberlist.php");
-    } else {
-        $error_message = 'Error adding member. Please try again.';
+        if ($result) {
+            $new_family_id = $result; // add_member returns the new family ID
+            
+            // Assign member to groups
+            foreach ($group_types as $type) {
+                $group_field = 'group_' . $type['id'];
+                if (!empty($_POST[$group_field])) {
+                    assign_member_to_group($new_family_id, $type['id'], $_POST[$group_field]);
+                }
+            }
+            
+            // If this family is being added for a child, link them
+            if (!empty($_POST['child_id'])) {
+                $child_id = $_POST['child_id'];
+                
+                // Get parent family ID from child record
+                global $con, $tbl_child, $tbl_family;
+                $sql = "SELECT father_id FROM $tbl_child WHERE id = ?";
+                $stmt = mysqli_prepare($con, $sql);
+                mysqli_stmt_bind_param($stmt, 'i', $child_id);
+                mysqli_stmt_execute($stmt);
+                $result_child = mysqli_stmt_get_result($stmt);
+                $child_data = mysqli_fetch_assoc($result_child);
+                mysqli_stmt_close($stmt);
+                
+                if ($child_data) {
+                    $parent_family_id = $child_data['father_id'];
+                    
+                    // Link child to new family
+                    $sql = "UPDATE $tbl_child SET fam_id = ? WHERE id = ?";
+                    $stmt = mysqli_prepare($con, $sql);
+                    mysqli_stmt_bind_param($stmt, 'ii', $new_family_id, $child_id);
+                    mysqli_stmt_execute($stmt);
+                    mysqli_stmt_close($stmt);
+                    
+                    // Set parent_id for new family
+                    $sql = "UPDATE $tbl_family SET parent_id = ? WHERE id = ?";
+                    $stmt = mysqli_prepare($con, $sql);
+                    mysqli_stmt_bind_param($stmt, 'ii', $parent_family_id, $new_family_id);
+                    mysqli_stmt_execute($stmt);
+                    mysqli_stmt_close($stmt);
+                    
+                    // Regenerate family tree
+                    regenerateFamilyTree($parent_family_id);
+                }
+            }
+            
+            $success_message = 'Member added successfully!';
+            // Redirect to member list after 2 seconds
+            header("refresh:2;url=memberlist.php");
+        } else {
+            $error_message = 'Error adding member. Please try again.';
+        }
     }
 }
 
@@ -456,47 +480,81 @@ include('../includes/header.php');
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <label for="village" class="col-sm-4 col-form-label">Village</label>
+                    <!-- Location Search Section -->
+                    <div id="permanentLocationSearch" class="row mb-3">
+                        <label for="permanentVillageSearch" class="col-sm-4 col-form-label">Search Village</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="village" name="village">
+                            <select class="form-select select2" id="permanentVillageSearch" style="width: 100%;">
+                                <option value="">Search for a village...</option>
+                            </select>
+                            <small class="text-muted">Type village, taluk, or district name to search</small>
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <label for="taluk" class="col-sm-4 col-form-label">Taluk</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="taluk" name="taluk">
+                    <!-- Add New Location Link -->
+                    <div id="permanentAddNewLink" class="row mb-3">
+                        <div class="col-sm-8 offset-sm-4">
+                            <a href="#" class="text-primary" onclick="openAddLocationModal('permanent'); return false;">
+                                <i class="bi bi-plus-circle"></i> Add New Location
+                            </a>
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <label for="district" class="col-sm-4 col-form-label">District</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="district" name="district">
+                    <!-- Selected Location Display -->
+                    <div id="permanentLocationDisplay" style="display: none;">
+                        <div class="card bg-light mb-3">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0 text-success">
+                                        <i class="bi bi-check-circle-fill"></i> 
+                                        <span id="permanentLocationSource">Selected Location</span>
+                                    </h6>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="changeLocation('permanent')">
+                                            <i class="bi bi-search"></i> Change
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="editLocation('permanent')">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row g-2 small">
+                                    <div class="col-12">
+                                        <span class="fw-bold">Village:</span>
+                                        <span id="permanentVillageDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">Taluk:</span>
+                                        <span id="permanentTalukDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">District:</span>
+                                        <span id="permanentDistrictDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">State:</span>
+                                        <span id="permanentStateDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">Country:</span>
+                                        <span id="permanentCountryDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">Pincode:</span>
+                                        <span id="permanentPincodeDisplay" class="ms-2"></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <label for="state" class="col-sm-4 col-form-label">State</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="state" name="state">
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <label for="country" class="col-sm-4 col-form-label">Country</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="country" name="country" value="India">
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <label for="pincode" class="col-sm-4 col-form-label">Pincode</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="pincode" name="pincode">
-                        </div>
-                    </div>
+                    <!-- Hidden fields for form submission -->
+                    <input type="hidden" id="village" name="village">
+                    <input type="hidden" id="taluk" name="taluk">
+                    <input type="hidden" id="district" name="district">
+                    <input type="hidden" id="state" name="state">
+                    <input type="hidden" id="country" name="country">
+                    <input type="hidden" id="pincode" name="pincode">
                 </div>
             </div>
         </div>
@@ -523,47 +581,81 @@ include('../includes/header.php');
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <label for="c_village" class="col-sm-4 col-form-label">Village</label>
+                    <!-- Location Search Section -->
+                    <div id="currentLocationSearch" class="row mb-3">
+                        <label for="currentVillageSearch" class="col-sm-4 col-form-label">Search Village</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="c_village" name="c_village">
+                            <select class="form-select select2" id="currentVillageSearch" style="width: 100%;">
+                                <option value="">Search for a village...</option>
+                            </select>
+                            <small class="text-muted">Type village, taluk, or district name to search</small>
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <label for="c_taluk" class="col-sm-4 col-form-label">Taluk</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="c_taluk" name="c_taluk">
+                    <!-- Add New Location Link -->
+                    <div id="currentAddNewLink" class="row mb-3">
+                        <div class="col-sm-8 offset-sm-4">
+                            <a href="#" class="text-primary" onclick="openAddLocationModal('current'); return false;">
+                                <i class="bi bi-plus-circle"></i> Add New Location
+                            </a>
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <label for="c_district" class="col-sm-4 col-form-label">District</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="c_district" name="c_district">
+                    <!-- Selected Location Display -->
+                    <div id="currentLocationDisplay" style="display: none;">
+                        <div class="card bg-light mb-3">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0 text-success">
+                                        <i class="bi bi-check-circle-fill"></i> 
+                                        <span id="currentLocationSource">Selected Location</span>
+                                    </h6>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="changeLocation('current')">
+                                            <i class="bi bi-search"></i> Change
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="editLocation('current')">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row g-2 small">
+                                    <div class="col-12">
+                                        <span class="fw-bold">Village:</span>
+                                        <span id="currentVillageDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">Taluk:</span>
+                                        <span id="currentTalukDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">District:</span>
+                                        <span id="currentDistrictDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">State:</span>
+                                        <span id="currentStateDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">Country:</span>
+                                        <span id="currentCountryDisplay" class="ms-2"></span>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="fw-bold">Pincode:</span>
+                                        <span id="currentPincodeDisplay" class="ms-2"></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="row mb-3">
-                        <label for="c_state" class="col-sm-4 col-form-label">State</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="c_state" name="c_state">
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <label for="c_country" class="col-sm-4 col-form-label">Country</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="c_country" name="c_country" value="India">
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <label for="c_pincode" class="col-sm-4 col-form-label">Pincode</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="c_pincode" name="c_pincode">
-                        </div>
-                    </div>
+                    <!-- Hidden fields for form submission -->
+                    <input type="hidden" id="c_village" name="c_village">
+                    <input type="hidden" id="c_taluk" name="c_taluk">
+                    <input type="hidden" id="c_district" name="c_district">
+                    <input type="hidden" id="c_state" name="c_state">
+                    <input type="hidden" id="c_country" name="c_country">
+                    <input type="hidden" id="c_pincode" name="c_pincode">
                 </div>
             </div>
         </div>
@@ -608,17 +700,6 @@ include('../includes/header.php');
                             <input type="text" class="form-control" id="pudavai" name="pudavai">
                         </div>
                     </div>
-                    
-                    <div class="row mb-3">
-                        <label for="ic" class="col-sm-4 col-form-label">IC</label>
-                        <div class="col-sm-8">
-                            <select class="form-select" id="ic" name="ic">
-                                <option value="">Select</option>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
-                            </select>
-                        </div>
-                    </div>
                 </div>
                 
                 <!-- Right Column -->
@@ -633,6 +714,97 @@ include('../includes/header.php');
             </div>
         </div>
     </div>
+
+    <!-- Group Assignments -->
+    <?php 
+    $group_types_form = get_group_types(true);
+    if (!empty($group_types_form)) {
+    ?>
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-diagram-3"></i> Group Assignments
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Left Column -->
+                <div class="col-md-6">
+                    <?php 
+                    $count = 0;
+                    foreach ($group_types_form as $type) {
+                        $groups = get_groups($type['id'], true);
+                        if (!empty($groups)) {
+                            $count++;
+                            if ($count % 2 == 1) { // Odd items in left column
+                                $is_required = $type['is_required'] == 1;
+                    ?>
+                    <div class="row mb-3">
+                        <label for="group_<?php echo $type['id']; ?>" class="col-sm-4 col-form-label">
+                            <?php echo htmlspecialchars($type['name']); ?>
+                            <?php if ($is_required): ?>
+                            <span class="text-danger">*</span>
+                            <?php endif; ?>
+                        </label>
+                        <div class="col-sm-8">
+                            <select class="form-select" id="group_<?php echo $type['id']; ?>" name="group_<?php echo $type['id']; ?>"<?php echo $is_required ? ' required' : ''; ?>>
+                                <option value="">Select <?php echo htmlspecialchars($type['name']); ?></option>
+                                <?php foreach ($groups as $group): ?>
+                                <option value="<?php echo $group['id']; ?>"><?php echo htmlspecialchars($group['name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (!empty($type['description'])): ?>
+                            <small class="text-muted"><?php echo htmlspecialchars($type['description']); ?></small>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php 
+                            }
+                        }
+                    }
+                    ?>
+                </div>
+                
+                <!-- Right Column -->
+                <div class="col-md-6">
+                    <?php 
+                    $count = 0;
+                    foreach ($group_types_form as $type) {
+                        $groups = get_groups($type['id'], true);
+                        if (!empty($groups)) {
+                            $count++;
+                            if ($count % 2 == 0) { // Even items in right column
+                                $is_required = $type['is_required'] == 1;
+                    ?>
+                    <div class="row mb-3">
+                        <label for="group_<?php echo $type['id']; ?>" class="col-sm-4 col-form-label">
+                            <?php echo htmlspecialchars($type['name']); ?>
+                            <?php if ($is_required): ?>
+                            <span class="text-danger">*</span>
+                            <?php endif; ?>
+                        </label>
+                        <div class="col-sm-8">
+                            <select class="form-select" id="group_<?php echo $type['id']; ?>" name="group_<?php echo $type['id']; ?>"<?php echo $is_required ? ' required' : ''; ?>>
+                                <option value="">Select <?php echo htmlspecialchars($type['name']); ?></option>
+                                <?php foreach ($groups as $group): ?>
+                                <option value="<?php echo $group['id']; ?>"><?php echo htmlspecialchars($group['name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (!empty($type['description'])): ?>
+                            <small class="text-muted"><?php echo htmlspecialchars($type['description']); ?></small>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php 
+                            }
+                        }
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php } ?>
 
     <!-- Form Actions -->
     <div class="row">
@@ -741,7 +913,327 @@ $(document).ready(function() {
     $('.select2').select2({
         theme: 'bootstrap-5'
     });
+    
+    // Initialize location search dropdowns
+    initializeLocationSearch('permanent');
+    initializeLocationSearch('current');
 });
+
+// Location Management Functions
+let currentAddressType = ''; // 'permanent' or 'current'
+let currentEditMode = false; // true for edit, false for add new
+
+function initializeLocationSearch(addressType) {
+    const searchId = addressType + 'VillageSearch';
+    
+    $('#' + searchId).select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Search for a village...',
+        allowClear: true,
+        ajax: {
+            url: 'get_locations.php',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.results
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 2
+    }).on('select2:select', function (e) {
+        const data = e.params.data;
+        selectLocation(addressType, data);
+    });
+}
+
+function selectLocation(addressType, locationData) {
+    const prefix = addressType === 'permanent' ? '' : 'c_';
+    
+    // Set hidden fields
+    document.getElementById(prefix + 'village').value = locationData.village || '';
+    document.getElementById(prefix + 'taluk').value = locationData.taluk || '';
+    document.getElementById(prefix + 'district').value = locationData.district || '';
+    document.getElementById(prefix + 'state').value = locationData.state || '';
+    document.getElementById(prefix + 'country').value = locationData.country || '';
+    document.getElementById(prefix + 'pincode').value = locationData.pincode || '';
+    
+    // Update display
+    document.getElementById(addressType + 'VillageDisplay').textContent = locationData.village || '-';
+    document.getElementById(addressType + 'TalukDisplay').textContent = locationData.taluk || '-';
+    document.getElementById(addressType + 'DistrictDisplay').textContent = locationData.district || '-';
+    document.getElementById(addressType + 'StateDisplay').textContent = locationData.state || '-';
+    document.getElementById(addressType + 'CountryDisplay').textContent = locationData.country || '-';
+    document.getElementById(addressType + 'PincodeDisplay').textContent = locationData.pincode || '-';
+    
+    // Update source indicator
+    document.getElementById(addressType + 'LocationSource').innerHTML = 
+        '<i class="bi bi-check-circle-fill text-success"></i> Existing Location';
+    
+    // Show display, hide search
+    document.getElementById(addressType + 'LocationSearch').style.display = 'none';
+    document.getElementById(addressType + 'AddNewLink').style.display = 'none';
+    document.getElementById(addressType + 'LocationDisplay').style.display = 'block';
+}
+
+function changeLocation(addressType) {
+    // Clear selection
+    $('#' + addressType + 'VillageSearch').val(null).trigger('change');
+    
+    // Show search, hide display
+    document.getElementById(addressType + 'LocationSearch').style.display = 'block';
+    document.getElementById(addressType + 'AddNewLink').style.display = 'block';
+    document.getElementById(addressType + 'LocationDisplay').style.display = 'none';
+    
+    // Clear hidden fields
+    const prefix = addressType === 'permanent' ? '' : 'c_';
+    document.getElementById(prefix + 'village').value = '';
+    document.getElementById(prefix + 'taluk').value = '';
+    document.getElementById(prefix + 'district').value = '';
+    document.getElementById(prefix + 'state').value = '';
+    document.getElementById(prefix + 'country').value = '';
+    document.getElementById(prefix + 'pincode').value = '';
+}
+
+function openAddLocationModal(addressType) {
+    currentAddressType = addressType;
+    currentEditMode = false;
+    
+    // Reset form
+    document.getElementById('locationModalForm').reset();
+    document.getElementById('locationModalTitle').textContent = 'Add New Location';
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('locationModal')).show();
+}
+
+function editLocation(addressType) {
+    currentAddressType = addressType;
+    currentEditMode = true;
+    
+    const prefix = addressType === 'permanent' ? '' : 'c_';
+    
+    // Populate form with current values
+    document.getElementById('modalVillage').value = document.getElementById(prefix + 'village').value;
+    document.getElementById('modalTaluk').value = document.getElementById(prefix + 'taluk').value;
+    document.getElementById('modalDistrict').value = document.getElementById(prefix + 'district').value;
+    document.getElementById('modalState').value = document.getElementById(prefix + 'state').value;
+    document.getElementById('modalCountry').value = document.getElementById(prefix + 'country').value;
+    document.getElementById('modalPincode').value = document.getElementById(prefix + 'pincode').value;
+    
+    document.getElementById('locationModalTitle').textContent = 'Edit Location Details';
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('locationModal')).show();
+}
+
+function saveLocationFromModal() {
+    const village = document.getElementById('modalVillage').value.trim();
+    const taluk = document.getElementById('modalTaluk').value.trim();
+    const district = document.getElementById('modalDistrict').value.trim();
+    const state = document.getElementById('modalState').value.trim();
+    const country = document.getElementById('modalCountry').value.trim();
+    const pincode = document.getElementById('modalPincode').value.trim();
+    
+    // Validate required fields
+    if (!village) {
+        alert('Village is required');
+        return;
+    }
+    
+    const locationData = {
+        village: village,
+        taluk: taluk,
+        district: district,
+        state: state,
+        country: country,
+        pincode: pincode
+    };
+    
+    // Apply to form
+    const prefix = currentAddressType === 'permanent' ? '' : 'c_';
+    document.getElementById(prefix + 'village').value = village;
+    document.getElementById(prefix + 'taluk').value = taluk;
+    document.getElementById(prefix + 'district').value = district;
+    document.getElementById(prefix + 'state').value = state;
+    document.getElementById(prefix + 'country').value = country;
+    document.getElementById(prefix + 'pincode').value = pincode;
+    
+    // Update display
+    document.getElementById(currentAddressType + 'VillageDisplay').textContent = village || '-';
+    document.getElementById(currentAddressType + 'TalukDisplay').textContent = taluk || '-';
+    document.getElementById(currentAddressType + 'DistrictDisplay').textContent = district || '-';
+    document.getElementById(currentAddressType + 'StateDisplay').textContent = state || '-';
+    document.getElementById(currentAddressType + 'CountryDisplay').textContent = country || '-';
+    document.getElementById(currentAddressType + 'PincodeDisplay').textContent = pincode || '-';
+    
+    // Update source indicator based on mode
+    if (currentEditMode) {
+        document.getElementById(currentAddressType + 'LocationSource').innerHTML = 
+            '<i class="bi bi-pencil text-warning"></i> Modified Location';
+    } else {
+        document.getElementById(currentAddressType + 'LocationSource').innerHTML = 
+            '<i class="bi bi-plus-circle text-primary"></i> New Location';
+    }
+    
+    // Show display, hide search
+    document.getElementById(currentAddressType + 'LocationSearch').style.display = 'none';
+    document.getElementById(currentAddressType + 'AddNewLink').style.display = 'none';
+    document.getElementById(currentAddressType + 'LocationDisplay').style.display = 'block';
+    
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('locationModal')).hide();
+}
+
+// Update toggleCurrentAddress function to work with new location system
+function toggleCurrentAddress() {
+    const checkbox = document.getElementById('sameAsPermanent');
+    const currentAddressFields = [
+        'current_address', 'c_village', 'c_taluk', 'c_district', 
+        'c_state', 'c_country', 'c_pincode'
+    ];
+    
+    if (checkbox.checked) {
+        // Copy permanent address to current address
+        document.getElementById('current_address').value = document.getElementById('permanent_address').value;
+        
+        // Copy location values
+        document.getElementById('c_village').value = document.getElementById('village').value;
+        document.getElementById('c_taluk').value = document.getElementById('taluk').value;
+        document.getElementById('c_district').value = document.getElementById('district').value;
+        document.getElementById('c_state').value = document.getElementById('state').value;
+        document.getElementById('c_country').value = document.getElementById('country').value;
+        document.getElementById('c_pincode').value = document.getElementById('pincode').value;
+        
+        // Copy display values if permanent location is selected
+        if (document.getElementById('permanentLocationDisplay').style.display === 'block') {
+            document.getElementById('currentVillageDisplay').textContent = document.getElementById('permanentVillageDisplay').textContent;
+            document.getElementById('currentTalukDisplay').textContent = document.getElementById('permanentTalukDisplay').textContent;
+            document.getElementById('currentDistrictDisplay').textContent = document.getElementById('permanentDistrictDisplay').textContent;
+            document.getElementById('currentStateDisplay').textContent = document.getElementById('permanentStateDisplay').textContent;
+            document.getElementById('currentCountryDisplay').textContent = document.getElementById('permanentCountryDisplay').textContent;
+            document.getElementById('currentPincodeDisplay').textContent = document.getElementById('permanentPincodeDisplay').textContent;
+            
+            // Show current location display
+            document.getElementById('currentLocationSearch').style.display = 'none';
+            document.getElementById('currentAddNewLink').style.display = 'none';
+            document.getElementById('currentLocationDisplay').style.display = 'block';
+            document.getElementById('currentLocationSource').innerHTML = 
+                '<i class="bi bi-check-circle-fill text-success"></i> Same as Permanent';
+            
+            // Hide Change/Edit buttons for current address
+            const currentActionButtons = document.querySelector('#currentLocationDisplay .d-flex > div:last-child');
+            if (currentActionButtons) {
+                currentActionButtons.style.display = 'none';
+            }
+        }
+        
+        // Disable current address fields
+        document.getElementById('current_address').disabled = true;
+        document.getElementById('current_address').style.backgroundColor = '#e9ecef';
+        
+        // Disable current location controls
+        $('#currentVillageSearch').prop('disabled', true);
+        document.getElementById('currentLocationSearch').style.display = 'none';
+        document.getElementById('currentAddNewLink').style.display = 'none';
+        
+    } else {
+        // Clear current address data
+        document.getElementById('current_address').value = '';
+        
+        // Clear location values
+        document.getElementById('c_village').value = '';
+        document.getElementById('c_taluk').value = '';
+        document.getElementById('c_district').value = '';
+        document.getElementById('c_state').value = '';
+        document.getElementById('c_country').value = '';
+        document.getElementById('c_pincode').value = '';
+        
+        // Enable current address fields
+        document.getElementById('current_address').disabled = false;
+        document.getElementById('current_address').style.backgroundColor = '';
+        
+        // Enable current location controls
+        $('#currentVillageSearch').prop('disabled', false);
+        
+        // Show Change/Edit buttons for current address
+        const currentActionButtons = document.querySelector('#currentLocationDisplay .d-flex > div:last-child');
+        if (currentActionButtons) {
+            currentActionButtons.style.display = 'block';
+        }
+        
+        // Clear and hide current location display, show search
+        document.getElementById('currentLocationSearch').style.display = 'block';
+        document.getElementById('currentAddNewLink').style.display = 'block';
+        document.getElementById('currentLocationDisplay').style.display = 'none';
+    }
+}
 </script>
+
+<!-- Add/Edit Location Modal -->
+<div class="modal fade" id="locationModal" tabindex="-1" aria-labelledby="locationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="locationModalTitle">Add New Location</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="locationModalForm">
+                    <div class="row mb-3">
+                        <label for="modalVillage" class="col-sm-4 col-form-label">Village <span class="text-danger">*</span></label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="modalVillage" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="modalTaluk" class="col-sm-4 col-form-label">Taluk</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="modalTaluk">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="modalDistrict" class="col-sm-4 col-form-label">District</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="modalDistrict">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="modalState" class="col-sm-4 col-form-label">State</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="modalState">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="modalCountry" class="col-sm-4 col-form-label">Country</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="modalCountry" value="India">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="modalPincode" class="col-sm-4 col-form-label">Pincode</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="modalPincode">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveLocationFromModal()">
+                    <i class="bi bi-check-circle"></i> Save Location
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <?php include('../includes/footer.php'); ?>

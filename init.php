@@ -7,4 +7,8 @@ require(dirname(__FILE__)."/vars.php");
 include_once(dirname(__FILE__)."/function.php");
 
 connectdb();
+
+// Load organization settings from database (override config defaults)
+$org_name = get_setting('org_name', $org_name ?? '');
+$org_name_english = get_setting('org_name_english', $org_name_english ?? '');
 ?>

@@ -190,7 +190,7 @@ $total_members = count($members);
     </div>
 
     <div class="header">
-        <h1>அருள்மிகு புது வெங்கரை அம்மன் கோயில்</h1>
+        <h1><?php echo htmlspecialchars($org_name); ?></h1>
         <div class="subtitle">Member Directory Report</div>
         <div class="subtitle">Generated on: <?php echo date('d-m-Y H:i:s'); ?></div>
     </div>

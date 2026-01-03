@@ -129,6 +129,144 @@ function sql_null_or_int($val) {
     return ($val === '' ? 0 : (int)$val);
 }
 
+// ============================================
+// SETTINGS FUNCTIONS
+// ============================================
+
+/**
+ * Get a single setting value by key
+ * @param string $key The setting key
+ * @param mixed $default Default value if setting not found
+ * @return mixed The setting value or default
+ */
+function get_setting($key, $default = null) {
+    global $con, $tbl_settings;
+    
+    $sql = "SELECT setting_value FROM $tbl_settings WHERE setting_key = ?";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "s", $key);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    if ($row = mysqli_fetch_assoc($result)) {
+        mysqli_stmt_close($stmt);
+        return $row['setting_value'];
+    }
+    mysqli_stmt_close($stmt);
+    return $default;
+}
+
+/**
+ * Get all settings for a specific group
+ * @param string $group The group name
+ * @return array Associative array of key => value
+ */
+function get_settings_by_group($group) {
+    global $con, $tbl_settings;
+    $settings = [];
+    
+    $sql = "SELECT setting_key, setting_value FROM $tbl_settings WHERE `group` = ? ORDER BY id";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "s", $group);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    while ($row = mysqli_fetch_assoc($result)) {
+        $settings[$row['setting_key']] = $row['setting_value'];
+    }
+    mysqli_stmt_close($stmt);
+    return $settings;
+}
+
+/**
+ * Get all settings
+ * @return array Associative array of key => value
+ */
+function get_all_settings() {
+    global $con, $tbl_settings;
+    $settings = [];
+    
+    $sql = "SELECT setting_key, setting_value FROM $tbl_settings ORDER BY `group`, id";
+    $result = mysqli_query($con, $sql);
+    
+    while ($row = mysqli_fetch_assoc($result)) {
+        $settings[$row['setting_key']] = $row['setting_value'];
+    }
+    return $settings;
+}
+
+/**
+ * Update a setting value
+ * @param string $key The setting key
+ * @param string $value The new value
+ * @return bool Success status
+ */
+function update_setting($key, $value) {
+    global $con, $tbl_settings;
+    
+    $sql = "UPDATE $tbl_settings SET setting_value = ? WHERE setting_key = ?";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "ss", $value, $key);
+    $result = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    return $result;
+}
+
+/**
+ * Add a new setting
+ * @param string $group The group name
+ * @param string $key The setting key
+ * @param string $value The setting value
+ * @param string $description Optional description
+ * @return bool Success status
+ */
+function add_setting($group, $key, $value, $description = '') {
+    global $con, $tbl_settings;
+    
+    $sql = "INSERT INTO $tbl_settings (`group`, setting_key, setting_value, description) VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "ssss", $group, $key, $value, $description);
+    $result = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    return $result;
+}
+
+/**
+ * Delete a setting
+ * @param string $key The setting key
+ * @return bool Success status
+ */
+function delete_setting($key) {
+    global $con, $tbl_settings;
+    
+    $sql = "DELETE FROM $tbl_settings WHERE setting_key = ?";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "s", $key);
+    $result = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    return $result;
+}
+
+/**
+ * Get setting as integer
+ */
+function get_setting_int($key, $default = 0) {
+    return (int) get_setting($key, $default);
+}
+
+/**
+ * Get setting as boolean
+ */
+function get_setting_bool($key, $default = false) {
+    $value = get_setting($key, $default ? '1' : '0');
+    return $value === '1' || $value === 'true' || $value === true;
+}
+
+// ============================================
+// END SETTINGS FUNCTIONS
+// ============================================
+
 function add_member($m) {
     global $con, $tbl_family;
     if (count($m) && $m['name'] != '') {
@@ -2308,5 +2446,561 @@ function getOrGenerateFamilyTree($family_id) {
     
     return ['tree' => $tree, 'ftree_id' => $ftree_id];
 }
-        
+
+// =============================================
+// GROUP MANAGEMENT FUNCTIONS
+// =============================================
+
+/**
+ * Get all group types
+ * @param bool $active_only - If true, only return active group types
+ * @return array
+ */
+function get_group_types($active_only = true) {
+    global $con, $tbl_group_types;
+    
+    $sql = "SELECT * FROM $tbl_group_types";
+    if ($active_only) {
+        $sql .= " WHERE is_active = 1";
+    }
+    $sql .= " ORDER BY display_order, name";
+    
+    $result = mysqli_query($con, $sql);
+    $types = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $types[] = $row;
+    }
+    return $types;
+}
+
+/**
+ * Get a single group type by ID
+ * @param int $group_type_id
+ * @return array|null
+ */
+function get_group_type($group_type_id) {
+    global $con, $tbl_group_types;
+    
+    $stmt = mysqli_prepare($con, "SELECT * FROM $tbl_group_types WHERE id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $group_type_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    
+    return $row;
+}
+
+/**
+ * Get groups for a specific group type
+ * @param int $group_type_id
+ * @param bool $active_only
+ * @return array
+ */
+function get_groups($group_type_id, $active_only = true) {
+    global $con, $tbl_groups;
+    
+    $sql = "SELECT * FROM $tbl_groups WHERE group_type_id = ?";
+    if ($active_only) {
+        $sql .= " AND is_active = 1";
+    }
+    $sql .= " ORDER BY display_order, name";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $group_type_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    $groups = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $groups[] = $row;
+    }
+    mysqli_stmt_close($stmt);
+    
+    return $groups;
+}
+
+/**
+ * Get a single group by ID
+ * @param int $group_id
+ * @return array|null
+ */
+function get_group($group_id) {
+    global $con, $tbl_groups;
+    
+    $stmt = mysqli_prepare($con, "SELECT * FROM $tbl_groups WHERE id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $group_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    
+    return $row;
+}
+
+/**
+ * Get all groups assigned to a member
+ * @param int $member_id
+ * @return array
+ */
+function get_member_groups($member_id) {
+    global $con, $tbl_member_groups, $tbl_groups, $tbl_group_types;
+    
+    $sql = "SELECT mg.*, g.name as group_name, g.code as group_code, 
+                   gt.name as group_type_name, gt.slug as group_type_slug
+            FROM $tbl_member_groups mg
+            JOIN $tbl_groups g ON mg.group_id = g.id
+            JOIN $tbl_group_types gt ON mg.group_type_id = gt.id
+            WHERE mg.member_id = ?
+            ORDER BY gt.display_order, gt.name";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $member_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    $groups = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $groups[] = $row;
+    }
+    mysqli_stmt_close($stmt);
+    
+    return $groups;
+}
+
+/**
+ * Assign or update a member's group for a specific group type
+ * @param int $member_id
+ * @param int $group_type_id
+ * @param int $group_id
+ * @return bool
+ */
+function assign_member_to_group($member_id, $group_type_id, $group_id) {
+    global $con, $tbl_member_groups;
+    
+    // Use INSERT ... ON DUPLICATE KEY UPDATE for upsert
+    $sql = "INSERT INTO $tbl_member_groups (member_id, group_type_id, group_id, assigned_at) 
+            VALUES (?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE group_id = ?, assigned_at = NOW()";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "iiii", $member_id, $group_type_id, $group_id, $group_id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    
+    return $success;
+}
+
+/**
+ * Remove a member from a group type
+ * @param int $member_id
+ * @param int $group_type_id
+ * @return bool
+ */
+function remove_member_from_group($member_id, $group_type_id) {
+    global $con, $tbl_member_groups;
+    
+    $stmt = mysqli_prepare($con, "DELETE FROM $tbl_member_groups WHERE member_id = ? AND group_type_id = ?");
+    mysqli_stmt_bind_param($stmt, "ii", $member_id, $group_type_id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    
+    return $success;
+}
+
+/**
+ * Get member count for a group
+ * @param int $group_id
+ * @return int
+ */
+function get_group_member_count($group_id) {
+    global $con, $tbl_member_groups;
+    
+    $stmt = mysqli_prepare($con, "SELECT COUNT(*) as cnt FROM $tbl_member_groups WHERE group_id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $group_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    
+    return (int)$row['cnt'];
+}
+
+/**
+ * Get member counts for all groups in a group type
+ * @param int $group_type_id
+ * @return array - associative array of group_id => count
+ */
+function get_group_member_counts($group_type_id) {
+    global $con, $tbl_member_groups, $tbl_groups;
+    
+    $sql = "SELECT g.id, COUNT(mg.member_id) as member_count
+            FROM $tbl_groups g
+            LEFT JOIN $tbl_member_groups mg ON g.id = mg.group_id
+            WHERE g.group_type_id = ?
+            GROUP BY g.id";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $group_type_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    $counts = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $counts[$row['id']] = (int)$row['member_count'];
+    }
+    mysqli_stmt_close($stmt);
+    
+    return $counts;
+}
+
+/**
+ * Get total members across all groups in a type
+ * @param int $group_type_id
+ * @return int
+ */
+function get_group_type_total_members($group_type_id) {
+    global $con, $tbl_member_groups;
+    
+    $stmt = mysqli_prepare($con, "SELECT COUNT(*) as cnt FROM $tbl_member_groups WHERE group_type_id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $group_type_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    
+    return (int)$row['cnt'];
+}
+
+/**
+ * Get count of groups in a group type
+ * @param int $group_type_id
+ * @param bool $active_only
+ * @return int
+ */
+function get_group_count($group_type_id, $active_only = false) {
+    global $con, $tbl_groups;
+    
+    $sql = "SELECT COUNT(*) as cnt FROM $tbl_groups WHERE group_type_id = ?";
+    if ($active_only) {
+        $sql .= " AND is_active = 1";
+    }
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $group_type_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    
+    return (int)$row['cnt'];
+}
+
+/**
+ * Get all members in a specific group with pagination
+ * @param int $group_id
+ * @param int $page
+ * @param int $per_page
+ * @param string $search
+ * @return array ['members' => [], 'total' => int, 'pages' => int]
+ */
+function get_members_by_group($group_id, $page = 1, $per_page = 25, $search = '') {
+    global $con, $tbl_member_groups, $tbl_family;
+    
+    $offset = ($page - 1) * $per_page;
+    
+    // Base query
+    $base_sql = "FROM $tbl_member_groups mg
+                 JOIN $tbl_family f ON mg.member_id = f.id
+                 WHERE mg.group_id = ? AND f.deleted = 0";
+    
+    $params = [$group_id];
+    $types = "i";
+    
+    // Add search condition
+    if (!empty($search)) {
+        $search_term = "%$search%";
+        $base_sql .= " AND (f.name LIKE ? OR f.member_id LIKE ? OR f.mobile_no LIKE ? OR f.village LIKE ?)";
+        $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term]);
+        $types .= "ssss";
+    }
+    
+    // Get total count
+    $count_sql = "SELECT COUNT(*) as total " . $base_sql;
+    $stmt = mysqli_prepare($con, $count_sql);
+    mysqli_stmt_bind_param($stmt, $types, ...$params);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $total = mysqli_fetch_assoc($result)['total'];
+    mysqli_stmt_close($stmt);
+    
+    // Get members
+    $sql = "SELECT f.id, f.member_id, f.name, f.father_name, f.mobile_no, f.village, f.image " . $base_sql;
+    $sql .= " ORDER BY f.name LIMIT ? OFFSET ?";
+    $params[] = $per_page;
+    $params[] = $offset;
+    $types .= "ii";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, $types, ...$params);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    
+    $members = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $members[] = $row;
+    }
+    mysqli_stmt_close($stmt);
+    
+    return [
+        'members' => $members,
+        'total' => (int)$total,
+        'pages' => ceil($total / $per_page)
+    ];
+}
+
+/**
+ * Generate slug from name
+ * @param string $name
+ * @return string
+ */
+function generate_slug($name) {
+    $slug = strtolower(trim($name));
+    $slug = preg_replace('/[^a-z0-9-]/', '-', $slug);
+    $slug = preg_replace('/-+/', '-', $slug);
+    $slug = trim($slug, '-');
+    return $slug;
+}
+
+/**
+ * Add a new group type
+ * @param array $data
+ * @return int|false - Returns inserted ID or false on failure
+ */
+function add_group_type($data) {
+    global $con, $tbl_group_types;
+    
+    $name = $data['name'];
+    $slug = !empty($data['slug']) ? $data['slug'] : generate_slug($name);
+    $description = $data['description'] ?? null;
+    $is_active = isset($data['is_active']) ? (int)$data['is_active'] : 1;
+    $is_required = isset($data['is_required']) ? (int)$data['is_required'] : 0;
+    $display_order = isset($data['display_order']) ? (int)$data['display_order'] : 0;
+    
+    $sql = "INSERT INTO $tbl_group_types (name, slug, description, is_active, is_required, display_order) 
+            VALUES (?, ?, ?, ?, ?, ?)";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "sssiii", $name, $slug, $description, $is_active, $is_required, $display_order);
+    
+    if (mysqli_stmt_execute($stmt)) {
+        $id = mysqli_insert_id($con);
+        mysqli_stmt_close($stmt);
+        return $id;
+    }
+    
+    mysqli_stmt_close($stmt);
+    return false;
+}
+
+/**
+ * Update a group type
+ * @param int $id
+ * @param array $data
+ * @return bool
+ */
+function update_group_type($id, $data) {
+    global $con, $tbl_group_types;
+    
+    $name = $data['name'];
+    $slug = !empty($data['slug']) ? $data['slug'] : generate_slug($name);
+    $description = $data['description'] ?? null;
+    $is_active = isset($data['is_active']) ? (int)$data['is_active'] : 1;
+    $is_required = isset($data['is_required']) ? (int)$data['is_required'] : 0;
+    $display_order = isset($data['display_order']) ? (int)$data['display_order'] : 0;
+    
+    $sql = "UPDATE $tbl_group_types 
+            SET name = ?, slug = ?, description = ?, is_active = ?, is_required = ?, display_order = ?
+            WHERE id = ?";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "sssiiii", $name, $slug, $description, $is_active, $is_required, $display_order, $id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    
+    return $success;
+}
+
+/**
+ * Check if group type can be deleted
+ * @param int $group_type_id
+ * @return array ['can_delete' => bool, 'reason' => string]
+ */
+function can_delete_group_type($group_type_id) {
+    $group_count = get_group_count($group_type_id, false);
+    
+    if ($group_count > 0) {
+        return [
+            'can_delete' => false,
+            'reason' => "This group type has $group_count group(s). Please delete all groups first."
+        ];
+    }
+    
+    return ['can_delete' => true, 'reason' => ''];
+}
+
+/**
+ * Delete a group type
+ * @param int $id
+ * @return array ['success' => bool, 'message' => string]
+ */
+function delete_group_type($id) {
+    global $con, $tbl_group_types;
+    
+    // Check if can delete
+    $check = can_delete_group_type($id);
+    if (!$check['can_delete']) {
+        return ['success' => false, 'message' => $check['reason']];
+    }
+    
+    $stmt = mysqli_prepare($con, "DELETE FROM $tbl_group_types WHERE id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    
+    return ['success' => $success, 'message' => $success ? 'Group type deleted successfully.' : 'Failed to delete group type.'];
+}
+
+/**
+ * Add a new group
+ * @param array $data
+ * @return int|false
+ */
+function add_group($data) {
+    global $con, $tbl_groups;
+    
+    $group_type_id = (int)$data['group_type_id'];
+    $name = $data['name'];
+    $code = $data['code'] ?? null;
+    $description = $data['description'] ?? null;
+    $is_active = isset($data['is_active']) ? (int)$data['is_active'] : 1;
+    $display_order = isset($data['display_order']) ? (int)$data['display_order'] : 0;
+    
+    $sql = "INSERT INTO $tbl_groups (group_type_id, name, code, description, is_active, display_order) 
+            VALUES (?, ?, ?, ?, ?, ?)";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "isssii", $group_type_id, $name, $code, $description, $is_active, $display_order);
+    
+    if (mysqli_stmt_execute($stmt)) {
+        $id = mysqli_insert_id($con);
+        mysqli_stmt_close($stmt);
+        return $id;
+    }
+    
+    mysqli_stmt_close($stmt);
+    return false;
+}
+
+/**
+ * Update a group
+ * @param int $id
+ * @param array $data
+ * @return bool
+ */
+function update_group($id, $data) {
+    global $con, $tbl_groups;
+    
+    $name = $data['name'];
+    $code = $data['code'] ?? null;
+    $description = $data['description'] ?? null;
+    $is_active = isset($data['is_active']) ? (int)$data['is_active'] : 1;
+    $display_order = isset($data['display_order']) ? (int)$data['display_order'] : 0;
+    
+    $sql = "UPDATE $tbl_groups 
+            SET name = ?, code = ?, description = ?, is_active = ?, display_order = ?
+            WHERE id = ?";
+    
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "sssiii", $name, $code, $description, $is_active, $display_order, $id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    
+    return $success;
+}
+
+/**
+ * Check if group can be deleted
+ * @param int $group_id
+ * @return array ['can_delete' => bool, 'reason' => string]
+ */
+function can_delete_group($group_id) {
+    $member_count = get_group_member_count($group_id);
+    
+    if ($member_count > 0) {
+        return [
+            'can_delete' => false,
+            'reason' => "This group has $member_count member(s) assigned. Please unassign all members first."
+        ];
+    }
+    
+    return ['can_delete' => true, 'reason' => ''];
+}
+
+/**
+ * Delete a group
+ * @param int $id
+ * @return array ['success' => bool, 'message' => string]
+ */
+function delete_group($id) {
+    global $con, $tbl_groups;
+    
+    // Check if can delete
+    $check = can_delete_group($id);
+    if (!$check['can_delete']) {
+        return ['success' => false, 'message' => $check['reason']];
+    }
+    
+    $stmt = mysqli_prepare($con, "DELETE FROM $tbl_groups WHERE id = ?");
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    
+    return ['success' => $success, 'message' => $success ? 'Group deleted successfully.' : 'Failed to delete group.'];
+}
+
+/**
+ * Toggle group active status
+ * @param int $id
+ * @return bool
+ */
+function toggle_group_status($id) {
+    global $con, $tbl_groups;
+    
+    $sql = "UPDATE $tbl_groups SET is_active = NOT is_active WHERE id = ?";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    
+    return $success;
+}
+
+/**
+ * Toggle group type active status
+ * @param int $id
+ * @return bool
+ */
+function toggle_group_type_status($id) {
+    global $con, $tbl_group_types;
+    
+    $sql = "UPDATE $tbl_group_types SET is_active = NOT is_active WHERE id = ?";
+    $stmt = mysqli_prepare($con, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    $success = mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    
+    return $success;
+}
+
         ?>

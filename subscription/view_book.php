@@ -75,7 +75,7 @@ if (!$book) {
 }
 
 // Fetch all receipts for this book
-$sql = "SELECT ms.*, f.name, ms.address, rb.book_no, rb.denomination, rb.book_type
+$sql = "SELECT ms.*, f.name, f.member_id as member_number, ms.address, rb.book_no, rb.denomination, rb.book_type
         FROM $tbl_member_subscriptions ms
         JOIN $tbl_family f ON ms.member_id = f.id
         JOIN $tbl_receipt_books rb ON ms.book_id = rb.id
@@ -271,6 +271,7 @@ $available_receipts = $book['end_receipt_no'] - $book['start_receipt_no'] + 1 - 
                                     <thead>
                                         <tr>
                                             <th>Receipt No</th>
+                                            <th>Member ID</th>
                                             <th>Member Name</th>
                                             <th>Address</th>
                                             <th>Amount</th>
@@ -284,6 +285,13 @@ $available_receipts = $book['end_receipt_no'] - $book['start_receipt_no'] + 1 - 
                                             <tr class="<?php echo $receipt_item['is_used'] ? '' : 'table-light'; ?>">
                                                 <td>
                                                     <span class="badge bg-secondary"><?php echo $receipt_item['receipt_no']; ?></span>
+                                                </td>
+                                                <td>
+                                                    <?php if ($receipt_item['is_used']): ?>
+                                                        <span class="badge bg-info"><?php echo htmlspecialchars($receipt_item['data']['member_number'] ?? '-'); ?></span>
+                                                    <?php else: ?>
+                                                        <span class="text-muted">-</span>
+                                                    <?php endif; ?>
                                                 </td>
                                                 <td>
                                                     <?php if ($receipt_item['is_used']): ?>
@@ -419,57 +427,130 @@ $available_receipts = $book['end_receipt_no'] - $book['start_receipt_no'] + 1 - 
     <div class="modal fade" id="addReceiptModal" tabindex="-1" aria-labelledby="addReceiptModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header bg-success text-white">
                     <h5 class="modal-title" id="addReceiptModalLabel">
-                        <i class="bi bi-plus"></i> Add Receipt
+                        <i class="bi bi-plus-circle"></i> Add New Receipt
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="POST" action="">
+                <form method="POST" action="" id="addReceiptForm">
                     <input type="hidden" name="action" value="add_receipt">
                     <input type="hidden" name="receipt_no" id="addReceiptNo">
                     <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
                     <input type="hidden" name="event_id" value="<?php echo $book['event_id']; ?>">
+                    <input type="hidden" name="member_id" id="addMemberIdHidden">
+                    
                     <div class="modal-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Receipt No</label>
-                                <input type="text" class="form-control" id="addReceiptNoDisplay" readonly>
+                        <!-- Step 1: Enter Member ID -->
+                        <div id="memberIdStep">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Step 1:</strong> Enter the Member ID to continue
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Member</label>
-                                <select class="form-select" name="member_id" required>
-                                    <option value="">Select Member</option>
-                                    <?php 
-                                    mysqli_data_seek($members_result, 0);
-                                    while ($member = mysqli_fetch_assoc($members_result)): 
-                                    ?>
-                                        <option value="<?php echo $member['id']; ?>"><?php echo htmlspecialchars($member['name']); ?></option>
-                                    <?php endwhile; ?>
-                                </select>
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <label class="form-label fw-bold mb-0 me-3">Receipt Number:</label>
+                                    <span class="badge bg-secondary fs-5 px-3 py-2" id="addReceiptNoDisplay"></span>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Amount</label>
-                                <input type="number" class="form-control" name="amount" step="0.01" min="0" required>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    Member ID <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-person-badge"></i>
+                                    </span>
+                                    <input type="text" class="form-control form-control-lg" id="memberIdInput" 
+                                           placeholder="Enter Member ID" autocomplete="off">
+                                </div>
+                                <small class="text-muted">Enter the member ID and press Enter or click Search</small>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Payment Date</label>
-                                <input type="date" class="form-control" name="payment_date" value="<?php echo date('Y-m-d'); ?>" required>
+                            <div class="d-grid">
+                                <button type="button" class="btn btn-primary btn-lg" id="searchMemberBtn">
+                                    <i class="bi bi-search me-2"></i> Search Member
+                                </button>
                             </div>
-                            <div class="col-md-12">
-                                <label class="form-label">Address</label>
-                                <input type="text" class="form-control" name="address" placeholder="Enter address">
+                            <div id="memberSearchError" class="alert alert-danger mt-3" style="display: none;"></div>
+                        </div>
+                        
+                        <!-- Step 2: Member Details and Receipt Information -->
+                        <div id="receiptDetailsStep" style="display: none;">
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle me-2"></i>
+                                <strong>Step 2:</strong> Verify details and complete the receipt
                             </div>
-                            <div class="col-12">
-                                <label class="form-label">Remarks</label>
-                                <textarea class="form-control" name="remarks" rows="3" placeholder="Optional remarks"></textarea>
+                            
+                            <!-- Member Information Card -->
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary mb-3">
+                                        <i class="bi bi-person-check"></i> Member Information
+                                    </h6>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Receipt No</label>
+                                            <div class="fw-bold text-secondary" id="displayReceiptNo"></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Member ID</label>
+                                            <div class="fw-bold text-primary" id="displayMemberId"></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Name</label>
+                                            <div class="fw-bold" id="displayMemberName"></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Address</label>
+                                            <div id="displayMemberAddress"></div>
+                                            <input type="hidden" name="address" id="addAddress">
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="changeMemberBtn">
+                                        <i class="bi bi-arrow-left"></i> Change Member
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Receipt Details -->
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">
+                                        Amount <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text <?php echo $book['book_type'] == 'fixed' ? 'bg-secondary text-white-50' : ''; ?>">₹</span>
+                                        <input type="number" class="form-control <?php echo $book['book_type'] == 'fixed' ? 'bg-secondary bg-opacity-25 text-muted' : ''; ?>" 
+                                               name="amount" id="addAmount" 
+                                               step="0.01" min="0" required 
+                                               <?php echo $book['book_type'] == 'fixed' ? 'readonly style="cursor: not-allowed;"' : ''; ?>>
+                                    </div>
+                                    <?php if ($book['book_type'] == 'fixed'): ?>
+                                    <small class="text-muted"><i class="bi bi-lock"></i> Fixed denomination: ₹<?php echo $book['denomination']; ?></small>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">
+                                        Payment Date <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="date" class="form-control" name="payment_date" 
+                                           value="<?php echo date('Y-m-d'); ?>" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">Remarks</label>
+                                    <textarea class="form-control" name="remarks" rows="3" 
+                                              placeholder="Enter any additional remarks (optional)"></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success">
-                            <i class="bi bi-save"></i> Add Receipt
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-success" id="submitReceiptBtn" style="display: none;">
+                            <i class="bi bi-check-circle"></i> Save Receipt
                         </button>
                     </div>
                 </form>
@@ -502,17 +583,119 @@ $available_receipts = $book['end_receipt_no'] - $book['start_receipt_no'] + 1 - 
                 });
             }
             
-            // Handle add receipt modal data population
+            // Handle add receipt modal - reset and setup
             const addModal = document.getElementById('addReceiptModal');
             if (addModal) {
                 addModal.addEventListener('show.bs.modal', function(event) {
                     const button = event.relatedTarget;
                     const receiptNo = button.getAttribute('data-receipt-no');
                     
+                    // Reset modal to step 1
+                    document.getElementById('memberIdStep').style.display = 'block';
+                    document.getElementById('receiptDetailsStep').style.display = 'none';
+                    document.getElementById('submitReceiptBtn').style.display = 'none';
+                    document.getElementById('memberIdInput').value = '';
+                    document.getElementById('memberSearchError').style.display = 'none';
+                    document.getElementById('addReceiptForm').reset();
+                    
                     // Populate receipt number
                     document.getElementById('addReceiptNo').value = receiptNo;
-                    document.getElementById('addReceiptNoDisplay').value = receiptNo;
+                    document.getElementById('addReceiptNoDisplay').textContent = receiptNo;
+                    
+                    // Focus on member ID input
+                    setTimeout(() => {
+                        document.getElementById('memberIdInput').focus();
+                    }, 500);
                 });
+            }
+            
+            // Handle member ID search
+            const memberIdInput = document.getElementById('memberIdInput');
+            const searchBtn = document.getElementById('searchMemberBtn');
+            const bookType = '<?php echo $book['book_type']; ?>';
+            const denomination = '<?php echo $book['denomination']; ?>';
+            
+            // Search on button click
+            searchBtn.addEventListener('click', function() {
+                searchMember();
+            });
+            
+            // Search on Enter key
+            memberIdInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchMember();
+                }
+            });
+            
+            // Change member button
+            document.getElementById('changeMemberBtn').addEventListener('click', function() {
+                document.getElementById('memberIdStep').style.display = 'block';
+                document.getElementById('receiptDetailsStep').style.display = 'none';
+                document.getElementById('submitReceiptBtn').style.display = 'none';
+                document.getElementById('memberIdInput').focus();
+            });
+            
+            // Search member function
+            function searchMember() {
+                const memberId = memberIdInput.value.trim();
+                const errorDiv = document.getElementById('memberSearchError');
+                
+                if (!memberId) {
+                    errorDiv.textContent = 'Please enter a Member ID';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Show loading
+                searchBtn.disabled = true;
+                searchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Searching...';
+                errorDiv.style.display = 'none';
+                
+                // Fetch member details
+                fetch('../member/get_member_by_id.php?member_id=' + encodeURIComponent(memberId))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Populate member details
+                            document.getElementById('addMemberIdHidden').value = data.member.id;
+                            document.getElementById('displayReceiptNo').textContent = document.getElementById('addReceiptNoDisplay').textContent;
+                            document.getElementById('displayMemberId').textContent = data.member.member_id;
+                            document.getElementById('displayMemberName').textContent = data.member.name;
+                            
+                            // Build address string
+                            let addressParts = [];
+                            if (data.member.current_address) addressParts.push(data.member.current_address);
+                            if (data.member.village) addressParts.push(data.member.village);
+                            if (data.member.district) addressParts.push(data.member.district);
+                            const address = addressParts.join(', ') || 'No address on record';
+                            
+                            document.getElementById('displayMemberAddress').textContent = address;
+                            document.getElementById('addAddress').value = address;
+                            
+                            // Set amount if fixed denomination
+                            if (bookType === 'fixed' && denomination) {
+                                document.getElementById('addAmount').value = denomination;
+                            }
+                            
+                            // Show step 2
+                            document.getElementById('memberIdStep').style.display = 'none';
+                            document.getElementById('receiptDetailsStep').style.display = 'block';
+                            document.getElementById('submitReceiptBtn').style.display = 'block';
+                        } else {
+                            errorDiv.textContent = data.message || 'Member not found';
+                            errorDiv.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        errorDiv.textContent = 'Error fetching member details. Please try again.';
+                        errorDiv.style.display = 'block';
+                        console.error('Error:', error);
+                    })
+                    .finally(() => {
+                        searchBtn.disabled = false;
+                        searchBtn.innerHTML = '<i class="bi bi-search me-2"></i> Search Member';
+                    });
             }
         });
     </script>

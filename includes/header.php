@@ -248,6 +248,11 @@
                             <i class="bi bi-people-fill"></i> Members
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?php echo $path; ?>/groups/">
+                            <i class="bi bi-diagram-3"></i> Groups
+                        </a>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-filter"></i> List By
