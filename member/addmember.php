@@ -136,6 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 include('../includes/header.php');
+include('location_helper.php');
+
+// Preload location data
+$locationFields = getAllLocationFields();
+$locationCombinations = getAllLocationCombinations();
 ?>
 
 <style>
@@ -484,9 +489,12 @@ include('../includes/header.php');
                     <div id="permanentLocationSearch" class="row mb-3">
                         <label for="permanentVillageSearch" class="col-sm-4 col-form-label">Search Village</label>
                         <div class="col-sm-8">
-                            <select class="form-select select2" id="permanentVillageSearch" style="width: 100%;">
-                                <option value="">Search for a village...</option>
-                            </select>
+                            <div class="d-flex gap-2">
+                                <select class="form-select select2" id="permanentVillageSearch" style="width: 100%;"></select>
+                                <button type="button" class="btn btn-outline-secondary" id="permanentCancelBtn" style="display: none;" onclick="cancelLocationSearch('permanent')" title="Cancel search">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
                             <small class="text-muted">Type village, taluk, or district name to search</small>
                         </div>
                     </div>
@@ -585,9 +593,12 @@ include('../includes/header.php');
                     <div id="currentLocationSearch" class="row mb-3">
                         <label for="currentVillageSearch" class="col-sm-4 col-form-label">Search Village</label>
                         <div class="col-sm-8">
-                            <select class="form-select select2" id="currentVillageSearch" style="width: 100%;">
-                                <option value="">Search for a village...</option>
-                            </select>
+                            <div class="d-flex gap-2">
+                                <select class="form-select select2" id="currentVillageSearch" style="width: 100%;"></select>
+                                <button type="button" class="btn btn-outline-secondary" id="currentCancelBtn" style="display: none;" onclick="cancelLocationSearch('current')" title="Cancel search">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
                             <small class="text-muted">Type village, taluk, or district name to search</small>
                         </div>
                     </div>
@@ -919,37 +930,143 @@ $(document).ready(function() {
     initializeLocationSearch('current');
 });
 
+// Global variable to store preloaded location data - initialized from PHP
+let locationData = <?php echo json_encode($locationFields); ?>;
+let locationCombinations = <?php echo json_encode($locationCombinations); ?>;
+
+console.log('Location data initialized:', locationData);
+console.log('Location combinations initialized:', locationCombinations.length + ' locations');
+
+// Initialize Select2 for modal fields with tags mode (allows new values)
+function initializeModalSelect2() {
+    const fieldsConfig = {
+        'modalVillage': { type: 'village', tags: true },
+        'modalTaluk': { type: 'taluk', tags: true },
+        'modalDistrict': { type: 'district', tags: true },
+        'modalState': { type: 'state', tags: true },
+        'modalPincode': { type: 'pincode', tags: true },
+        'modalCountry': { type: 'country', tags: false }
+    };
+    
+    Object.keys(fieldsConfig).forEach(fieldId => {
+        const config = fieldsConfig[fieldId];
+        const $select = $('#' + fieldId);
+        
+        // Clear any existing options and selections
+        $select.empty();
+        
+        // Destroy existing Select2 if already initialized
+        if ($select.data('select2')) {
+            $select.select2('destroy');
+        }
+        
+        // Build option elements from preloaded data or use predefined options
+        if (fieldId === 'modalCountry') {
+            // Predefined country options
+            const countries = ['India', 'USA', 'UK', 'Canada', 'Australia'];
+            countries.forEach(country => {
+                $select.append('<option value="' + country + '">' + country + '</option>');
+            });
+        } else if (locationData[config.type] && locationData[config.type].length > 0) {
+            locationData[config.type].forEach(item => {
+                $select.append('<option value="' + item.text + '">' + item.text + '</option>');
+            });
+        }
+        
+        // Initialize Select2 with proper configuration
+        $select.select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select ' + config.type + '...',
+            allowClear: true,
+            tags: config.tags,  // Allow new values to be entered for location fields only
+            tokenSeparators: [','],
+            searchInputPlaceholder: 'Type to search' + (config.tags ? ' or add new' : '') + '...',
+            dropdownParent: $('#locationModal'),  // Ensure dropdown appears in modal
+            matcher: function(params, data) {
+                // If there's no search term, return all data
+                if (!params.term || $.trim(params.term) === '') {
+                    return data;
+                }
+                
+                // Match on text field (case insensitive)
+                if (data.text.toUpperCase().indexOf(params.term.toUpperCase()) > -1) {
+                    return data;
+                }
+                
+                return null;
+            },
+            createTag: config.tags ? function (params) {
+                var term = $.trim(params.term);
+                if (term === '') {
+                    return null;
+                }
+                return {
+                    id: term,
+                    text: term,
+                    newTag: true
+                };
+            } : null
+        });
+    });
+}
+
+// Reinitialize modal Select2 fields when modal is opened
+function reinitializeModalSelectizeFields() {
+    initializeModalSelect2();
+}
+
 // Location Management Functions
 let currentAddressType = ''; // 'permanent' or 'current'
 let currentEditMode = false; // true for edit, false for add new
+let savedLocationData = {}; // Store location data before clearing
 
 function initializeLocationSearch(addressType) {
     const searchId = addressType + 'VillageSearch';
+    const $select = $('#' + searchId);
     
-    $('#' + searchId).select2({
+    // Build and populate option elements from preloaded data
+    let optionsHtml = '';
+    if (locationCombinations && locationCombinations.length > 0) {
+        locationCombinations.forEach(location => {
+            optionsHtml += '<option value="' + location.id + '">' + location.text + '</option>';
+        });
+    }
+    $select.html(optionsHtml);
+    
+    // Initialize Select2
+    $select.select2({
         theme: 'bootstrap-5',
         placeholder: 'Search for a village...',
         allowClear: true,
-        ajax: {
-            url: 'get_locations.php',
-            dataType: 'json',
-            delay: 250,
-            data: function (params) {
-                return {
-                    q: params.term
-                };
-            },
-            processResults: function (data) {
-                return {
-                    results: data.results
-                };
-            },
-            cache: true
-        },
-        minimumInputLength: 2
-    }).on('select2:select', function (e) {
-        const data = e.params.data;
-        selectLocation(addressType, data);
+        width: '100%',
+        matcher: function(params, data) {
+            // If there's no search term, return all data
+            if (!params.term || $.trim(params.term) === '') {
+                return data;
+            }
+            
+            // Match on text field (case insensitive)
+            if (data.text.toUpperCase().indexOf(params.term.toUpperCase()) > -1) {
+                return data;
+            }
+            
+            return null;
+        }
+    });
+    
+    // Clear default selection after initialization completes
+    setTimeout(function() {
+        $select.val(null).trigger('change');
+    }, 150);
+    
+    // Attach select event handler
+    $select.on('select2:select', function (e) {
+        const selectedId = e.params.data.id;
+        // Find the location data by ID
+        const locationObj = locationCombinations.find(loc => loc.id === selectedId);
+        if (locationObj) {
+            selectLocation(addressType, locationObj);
+        }
     });
 }
 
@@ -983,6 +1100,17 @@ function selectLocation(addressType, locationData) {
 }
 
 function changeLocation(addressType) {
+    // Save current location data before clearing
+    const prefix = addressType === 'permanent' ? '' : 'c_';
+    savedLocationData[addressType] = {
+        village: document.getElementById(prefix + 'village').value,
+        taluk: document.getElementById(prefix + 'taluk').value,
+        district: document.getElementById(prefix + 'district').value,
+        state: document.getElementById(prefix + 'state').value,
+        country: document.getElementById(prefix + 'country').value,
+        pincode: document.getElementById(prefix + 'pincode').value
+    };
+    
     // Clear selection
     $('#' + addressType + 'VillageSearch').val(null).trigger('change');
     
@@ -991,8 +1119,10 @@ function changeLocation(addressType) {
     document.getElementById(addressType + 'AddNewLink').style.display = 'block';
     document.getElementById(addressType + 'LocationDisplay').style.display = 'none';
     
+    // Show cancel button
+    document.getElementById(addressType + 'CancelBtn').style.display = 'block';
+    
     // Clear hidden fields
-    const prefix = addressType === 'permanent' ? '' : 'c_';
     document.getElementById(prefix + 'village').value = '';
     document.getElementById(prefix + 'taluk').value = '';
     document.getElementById(prefix + 'district').value = '';
@@ -1001,17 +1131,51 @@ function changeLocation(addressType) {
     document.getElementById(prefix + 'pincode').value = '';
 }
 
+function cancelLocationSearch(addressType) {
+    // Hide cancel button
+    document.getElementById(addressType + 'CancelBtn').style.display = 'none';
+    
+    // Restore saved location data
+    const savedData = savedLocationData[addressType];
+    if (savedData && (savedData.village || savedData.taluk || savedData.district)) {
+        selectLocation(addressType, savedData);
+    } else {
+        // Hide search and add new link if no location
+        document.getElementById(addressType + 'LocationSearch').style.display = 'none';
+        document.getElementById(addressType + 'AddNewLink').style.display = 'none';
+    }
+}
+
 function openAddLocationModal(addressType) {
     currentAddressType = addressType;
     currentEditMode = false;
     
-    // Reset form
+    // Reset form - clear all values for new location
     document.getElementById('locationModalForm').reset();
+    
     document.getElementById('locationModalTitle').textContent = 'Add New Location';
     
     // Show modal
-    new bootstrap.Modal(document.getElementById('locationModal')).show();
+    const modal = new bootstrap.Modal(document.getElementById('locationModal'));
+    modal.show();
+    
+    // Initialize Select2 when modal is shown with EMPTY values
+    setTimeout(function() {
+        initializeModalSelect2();
+        
+        // Clear all select2 values with a longer delay to ensure initialization is complete
+        setTimeout(function() {
+            $('#modalVillage').val(null).trigger('change');
+            $('#modalTaluk').val(null).trigger('change');
+            $('#modalDistrict').val(null).trigger('change');
+            $('#modalState').val(null).trigger('change');
+            $('#modalPincode').val(null).trigger('change');
+            $('#modalCountry').val(null).trigger('change');
+        }, 50);
+    }, 100);
 }
+
+// No need to call preloadLocationData() - data is already embedded in page from PHP
 
 function editLocation(addressType) {
     currentAddressType = addressType;
@@ -1019,27 +1183,40 @@ function editLocation(addressType) {
     
     const prefix = addressType === 'permanent' ? '' : 'c_';
     
-    // Populate form with current values
-    document.getElementById('modalVillage').value = document.getElementById(prefix + 'village').value;
-    document.getElementById('modalTaluk').value = document.getElementById(prefix + 'taluk').value;
-    document.getElementById('modalDistrict').value = document.getElementById(prefix + 'district').value;
-    document.getElementById('modalState').value = document.getElementById(prefix + 'state').value;
-    document.getElementById('modalCountry').value = document.getElementById(prefix + 'country').value;
-    document.getElementById('modalPincode').value = document.getElementById(prefix + 'pincode').value;
+    // Get current values
+    const village = document.getElementById(prefix + 'village').value;
+    const taluk = document.getElementById(prefix + 'taluk').value;
+    const district = document.getElementById(prefix + 'district').value;
+    const state = document.getElementById(prefix + 'state').value;
+    const country = document.getElementById(prefix + 'country').value || 'India';
+    const pincode = document.getElementById(prefix + 'pincode').value;
     
     document.getElementById('locationModalTitle').textContent = 'Edit Location Details';
     
     // Show modal
-    new bootstrap.Modal(document.getElementById('locationModal')).show();
+    const modal = new bootstrap.Modal(document.getElementById('locationModal'));
+    modal.show();
+    
+    // Initialize autocomplete and set values when modal is shown
+    setTimeout(function() {
+        initializeModalAutocomplete();
+        // Set field values
+        document.getElementById('modalVillage').value = village;
+        document.getElementById('modalTaluk').value = taluk;
+        document.getElementById('modalDistrict').value = district;
+        document.getElementById('modalState').value = state;
+        document.getElementById('modalCountry').value = country;
+        document.getElementById('modalPincode').value = pincode;
+    }, 100);
 }
 
 function saveLocationFromModal() {
-    const village = document.getElementById('modalVillage').value.trim();
-    const taluk = document.getElementById('modalTaluk').value.trim();
-    const district = document.getElementById('modalDistrict').value.trim();
-    const state = document.getElementById('modalState').value.trim();
-    const country = document.getElementById('modalCountry').value.trim();
-    const pincode = document.getElementById('modalPincode').value.trim();
+    const village = ($('#modalVillage').val() || '').trim();
+    const taluk = ($('#modalTaluk').val() || '').trim();
+    const district = ($('#modalDistrict').val() || '').trim();
+    const state = ($('#modalState').val() || '').trim();
+    const country = ($('#modalCountry').val() || '').trim();
+    const pincode = ($('#modalPincode').val() || '').trim();
     
     // Validate required fields
     if (!village) {
@@ -1189,37 +1366,43 @@ function toggleCurrentAddress() {
                     <div class="row mb-3">
                         <label for="modalVillage" class="col-sm-4 col-form-label">Village <span class="text-danger">*</span></label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="modalVillage" required>
+                            <select class="form-control select2-modal" id="modalVillage" required></select>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <label for="modalTaluk" class="col-sm-4 col-form-label">Taluk</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="modalTaluk">
+                            <select class="form-control select2-modal" id="modalTaluk"></select>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <label for="modalDistrict" class="col-sm-4 col-form-label">District</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="modalDistrict">
+                            <select class="form-control select2-modal" id="modalDistrict"></select>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <label for="modalState" class="col-sm-4 col-form-label">State</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="modalState">
+                            <select class="form-control select2-modal" id="modalState"></select>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <label for="modalCountry" class="col-sm-4 col-form-label">Country</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="modalCountry" value="India">
+                            <select class="form-control select2-modal" id="modalCountry">
+                                <option value="India">India</option>
+                                <option value="USA">USA</option>
+                                <option value="UK">UK</option>
+                                <option value="Canada">Canada</option>
+                                <option value="Australia">Australia</option>
+                            </select>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <label for="modalPincode" class="col-sm-4 col-form-label">Pincode</label>
                         <div class="col-sm-8">
-                            <input type="text" class="form-control" id="modalPincode">
+                            <select class="form-control select2-modal" id="modalPincode"></select>
                         </div>
                     </div>
                 </form>

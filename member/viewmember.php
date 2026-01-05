@@ -301,12 +301,18 @@ include('../includes/header.php');
                     $current_tab = $_GET['tab'] ?? 'profile';
                     $profile_active = ($current_tab == 'profile') ? 'active' : '';
                     $horoscope_active = ($current_tab == 'horoscope') ? 'active' : '';
+                    $payments_active = ($current_tab == 'payments') ? 'active' : '';
                     ?>
                     
                     <ul class="nav nav-tabs" id="memberTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <a class="nav-link <?php echo $profile_active; ?>" href="?id=<?php echo $id; ?>&tab=profile">
                                 <i class="bi bi-person"></i> Profile
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link <?php echo $payments_active; ?>" href="?id=<?php echo $id; ?>&tab=payments">
+                                <i class="bi bi-receipt"></i> Payments
                             </a>
                         </li>
                         <?php /* Horoscope tab hidden - to be enabled later
@@ -1194,6 +1200,100 @@ include('../includes/header.php');
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payments Tab -->
+                        <div class="tab-pane fade <?php echo $payments_active ? 'show active' : ''; ?>" id="payments" role="tabpanel">
+                            <?php
+                            global $con;
+                            // Fetch member subscriptions (donations/payments)
+                            $sql_payments = "SELECT ms.*, se.event_name 
+                                            FROM member_subscriptions ms 
+                                            LEFT JOIN subscription_events se ON ms.event_id = se.id 
+                                            WHERE ms.member_id = ? 
+                                            ORDER BY ms.created_at DESC";
+                            $stmt_payments = mysqli_prepare($con, $sql_payments);
+                            mysqli_stmt_bind_param($stmt_payments, "i", $id);
+                            mysqli_stmt_execute($stmt_payments);
+                            $result_payments = mysqli_stmt_get_result($stmt_payments);
+                            $payments = mysqli_fetch_all($result_payments, MYSQLI_ASSOC);
+                            mysqli_stmt_close($stmt_payments);
+                            ?>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="bi bi-receipt"></i> Payment History</h6>
+                                </div>
+                                <div class="card-body">
+                                    <?php if (!empty($payments)): ?>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Receipt No</th>
+                                                        <th>Event/Book Name</th>
+                                                        <th>Amount</th>
+                                                        <th>Payment Date</th>
+                                                        <th>Address</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($payments as $payment): ?>
+                                                        <tr>
+                                                            <td>
+                                                                <strong><?php echo htmlspecialchars($payment['receipt_no'] ?? ''); ?></strong>
+                                                            </td>
+                                                            <td>
+                                                                <?php echo htmlspecialchars($payment['event_name'] ?: $payment['book_name'] ?: '-'); ?>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-success">
+                                                                    ₹<?php echo number_format($payment['amount'] ?? 0, 2); ?>
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <?php 
+                                                                if (!empty($payment['payment_date'])) {
+                                                                    echo date('d-M-Y', strtotime($payment['payment_date']));
+                                                                } else {
+                                                                    echo '-';
+                                                                }
+                                                                ?>
+                                                            </td>
+                                                            <td>
+                                                                <small><?php echo htmlspecialchars($payment['address'] ?? '-'); ?></small>
+                                                            </td>
+                                                            <td>
+                                                                <?php
+                                                                $status = $payment['status'] ?? 'paid';
+                                                                $badge_class = match($status) {
+                                                                    'paid' => 'bg-success',
+                                                                    'pending' => 'bg-warning',
+                                                                    'cancelled' => 'bg-danger',
+                                                                    default => 'bg-secondary'
+                                                                };
+                                                                echo '<span class="badge ' . $badge_class . '">' . ucfirst($status) . '</span>';
+                                                                ?>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="alert alert-info mt-3">
+                                            <strong>Total Amount:</strong> ₹<?php 
+                                                echo number_format(array_sum(array_column($payments, 'amount')), 2); 
+                                            ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="alert alert-light text-center py-5">
+                                            <i class="bi bi-receipt" style="font-size: 48px; color: #ccc;"></i>
+                                            <p class="mt-3 text-muted">No payment records found</p>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
